@@ -652,6 +652,14 @@
                         enableEvent(eventId, userId);
                     }
                 }
+                
+                // Use event delegation for the copy buttons
+                if (e.target && e.target.classList.contains('copy-event-btn')) {
+                    const eventId = e.target.getAttribute('data-event-id');
+                    if (eventId) {
+                        copyEvent(eventId, userId);
+                    }
+                }
             });
             
             // QR code download button
