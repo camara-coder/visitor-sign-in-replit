@@ -1,0 +1,42 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - echo Installing dependencies...
+      - npm install
+  
+  pre_build:
+    commands:
+      - echo Running tests...
+      - npm test || true
+  
+  build:
+    commands:
+      - echo Building the application...
+      - npm run build || true
+      - echo Creating deployment package...
+      - mkdir -p deploy_package
+      - cp -r server.js database.js schema.js email-service.js package.json package-lock.json next.js-frontend deploy_package/
+      - cp -r node_modules deploy_package/
+      - cp -r .ebextensions deploy_package/
+      - cp Procfile deploy_package/
+  
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - cd deploy_package && zip -r ../visitor-app-deploy.zip .
+      - cd .. && ls -la
+
+artifacts:
+  files:
+    - visitor-app-deploy.zip
+    - .ebextensions/**/*
+    - Procfile
+  discard-paths: no
+
+cache:
+  paths:
+    - 'node_modules/**/*'

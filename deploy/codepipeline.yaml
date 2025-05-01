@@ -1,0 +1,192 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Visitor Sign-In Application using CodePipeline'
+
+Parameters:
+  AppName:
+    Description: Name of the application
+    Type: String
+    Default: visitor-sign-in-app
+  
+  EnvironmentName:
+    Description: Name of the environment
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+  
+  RepositoryName:
+    Description: Name of the CodeCommit repository
+    Type: String
+    Default: visitor-sign-in-app
+  
+  BranchName:
+    Description: Name of the branch to deploy
+    Type: String
+    Default: main
+  
+  ElasticBeanstalkApplicationName:
+    Description: Name of the Elastic Beanstalk application
+    Type: String
+    Default: visitor-sign-in-app
+  
+  ElasticBeanstalkEnvironmentName:
+    Description: Name of the Elastic Beanstalk environment
+    Type: String
+    Default: visitor-sign-in-app-production
+  
+  DatabasePassword:
+    Description: Password for the PostgreSQL database
+    Type: String
+    NoEcho: true
+  
+  ArtifactBucketName:
+    Description: Name of the S3 bucket for build artifacts
+    Type: String
+    Default: visitor-app-artifacts
+
+Resources:
+  # S3 Bucket for build artifacts
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ArtifactBucketName
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  
+  # IAM Roles
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonECR-FullAccess'
+  
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess'
+        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+        - 'arn:aws:iam::aws:policy/AWSCodeCommitFullAccess'
+        - 'arn:aws:iam::aws:policy/AWSElasticBeanstalkFullAccess'
+  
+  # CodeBuild Project
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AppName}-build
+      Description: 'Build project for visitor sign-in application'
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        PrivilegedMode: false
+        EnvironmentVariables:
+          - Name: DEPLOY_STAGE
+            Value: !Ref EnvironmentName
+          - Name: DATABASE_PASSWORD
+            Value: !Ref DatabasePassword
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yml
+      TimeoutInMinutes: 15
+  
+  # CodePipeline
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub ${AppName}-pipeline
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        # Source Stage
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: '1'
+              Configuration:
+                RepositoryName: !Ref RepositoryName
+                BranchName: !Ref BranchName
+              OutputArtifacts:
+                - Name: SourceCode
+        
+        # Build Stage
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: BuildOutput
+        
+        # Deploy Stage
+        - Name: Deploy
+          Actions:
+            - Name: DeployToElasticBeanstalk
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: ElasticBeanstalk
+                Version: '1'
+              Configuration:
+                ApplicationName: !Ref ElasticBeanstalkApplicationName
+                EnvironmentName: !Ref ElasticBeanstalkEnvironmentName
+              InputArtifacts:
+                - Name: BuildOutput
+  
+  # CodeCommit Repository
+  CodeCommitRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Ref RepositoryName
+      RepositoryDescription: !Sub "Repository for ${AppName}"
+
+Outputs:
+  PipelineURL:
+    Description: URL to the CodePipeline console
+    Value: !Sub https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${AppName}-pipeline
+  
+  RepositoryCloneUrlHttp:
+    Description: URL to clone the repository (HTTPS)
+    Value: !GetAtt CodeCommitRepository.CloneUrlHttp
+  
+  RepositoryCloneUrlSsh:
+    Description: URL to clone the repository (SSH)
+    Value: !GetAtt CodeCommitRepository.CloneUrlSsh
