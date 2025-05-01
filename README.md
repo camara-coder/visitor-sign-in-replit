@@ -28,10 +28,10 @@ A comprehensive full-stack web application for visitor registration and event ma
 
 ### Prerequisites
 
-- Node.js (v14+)
+- Node.js (v18+)
 - PostgreSQL database
 
-### Installation
+### Local Installation
 
 1. Clone the repository
 2. Install dependencies:
@@ -49,6 +49,32 @@ A comprehensive full-stack web application for visitor registration and event ma
    ```
    npm start
    ```
+
+### AWS Deployment
+
+The application includes scripts and configuration for easy deployment to AWS Elastic Beanstalk.
+
+#### Prerequisites for AWS Deployment
+
+- AWS Account with appropriate permissions
+- AWS CLI installed and configured
+- EB CLI installed
+
+#### Deployment Steps
+
+1. Setup AWS Parameters:
+   ```
+   ./scripts/setup-aws-params.sh
+   ```
+   This will securely store database passwords, secrets, and other configuration in AWS Parameter Store.
+
+2. Deploy the application:
+   ```
+   ./scripts/aws-deploy.sh
+   ```
+   This script will package and deploy the application to AWS Elastic Beanstalk.
+
+For detailed AWS deployment instructions, see the [deployment guide](deploy/README.md).
 
 ### Default Access
 

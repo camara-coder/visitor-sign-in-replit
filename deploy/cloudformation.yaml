@@ -1,0 +1,324 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Visitor Sign-In Application'
+
+Parameters:
+  AppName:
+    Description: Name of the application
+    Type: String
+    Default: visitor-sign-in-app
+  
+  EnvironmentName:
+    Description: Name of the environment
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+  
+  InstanceType:
+    Description: EC2 instance type for the application servers
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+  
+  DatabaseInstanceType:
+    Description: RDS instance type for PostgreSQL
+    Type: String
+    Default: db.t3.micro
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.small
+      - db.t3.medium
+  
+  DatabaseName:
+    Description: Name of the PostgreSQL database
+    Type: String
+    Default: visitorsDB
+  
+  DatabaseUsername:
+    Description: Username for the PostgreSQL database
+    Type: String
+    Default: visitorapp
+  
+  DatabasePassword:
+    Description: Password for the PostgreSQL database
+    Type: String
+    NoEcho: true
+  
+  SSLCertificateArn:
+    Description: ARN of the SSL certificate for HTTPS (optional)
+    Type: String
+    Default: ""
+
+Conditions:
+  UseSSL: !Not [!Equals [!Ref SSLCertificateArn, ""]]
+
+Resources:
+  # VPC and Network Resources
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-vpc
+  
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-public-subnet-1
+  
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-public-subnet-2
+  
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-private-subnet-1
+  
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-private-subnet-2
+  
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-igw
+  
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-public-route-table
+  
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+  
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+  
+  # Security Groups
+  ApplicationSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the application
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+  
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the database
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref ApplicationSecurityGroup
+  
+  # RDS Database
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS instance
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+  
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Ref DatabaseName
+      Engine: postgres
+      EngineVersion: "13.7"
+      DBInstanceClass: !Ref DatabaseInstanceType
+      AllocatedStorage: 20
+      StorageType: gp2
+      MasterUsername: !Ref DatabaseUsername
+      MasterUserPassword: !Ref DatabasePassword
+      MultiAZ: false
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !GetAtt DatabaseSecurityGroup.GroupId
+      PubliclyAccessible: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${AppName}-database
+    DeletionPolicy: Snapshot
+  
+  # Elastic Beanstalk Application
+  ElasticBeanstalkApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: !Ref AppName
+      Description: Visitor Sign-In Application
+  
+  ApplicationVersion:
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    Properties:
+      ApplicationName: !Ref ElasticBeanstalkApplication
+      Description: Initial version
+      SourceBundle:
+        S3Bucket: !Ref 'AWS::NoValue'
+        S3Key: !Ref 'AWS::NoValue'
+  
+  ElasticBeanstalkEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref ElasticBeanstalkApplication
+      EnvironmentName: !Sub ${AppName}-${EnvironmentName}
+      SolutionStackName: "64bit Amazon Linux 2 v5.8.0 running Node.js 18"
+      Tier:
+        Name: WebServer
+        Type: Standard
+      OptionSettings:
+        # VPC Configuration
+        - Namespace: aws:ec2:vpc
+          OptionName: VPCId
+          Value: !Ref VPC
+        - Namespace: aws:ec2:vpc
+          OptionName: Subnets
+          Value: !Join [",", [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+        - Namespace: aws:ec2:vpc
+          OptionName: ELBSubnets
+          Value: !Join [",", [!Ref PublicSubnet1, !Ref PublicSubnet2]]
+        
+        # Instance Configuration
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: InstanceType
+          Value: !Ref InstanceType
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: SecurityGroups
+          Value: !Ref ApplicationSecurityGroup
+        
+        # Load Balancer Configuration
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: LoadBalancerType
+          Value: application
+        
+        # Auto Scaling Configuration
+        - Namespace: aws:autoscaling:asg
+          OptionName: MinSize
+          Value: "1"
+        - Namespace: aws:autoscaling:asg
+          OptionName: MaxSize
+          Value: "3"
+        
+        # Environment Variables
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: NODE_ENV
+          Value: production
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: DATABASE_URL
+          Value: !Sub "postgres://${DatabaseUsername}:${DatabasePassword}@${Database.Endpoint.Address}:${Database.Endpoint.Port}/${DatabaseName}"
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: PGHOST
+          Value: !GetAtt Database.Endpoint.Address
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: PGPORT
+          Value: !GetAtt Database.Endpoint.Port
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: PGUSER
+          Value: !Ref DatabaseUsername
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: PGPASSWORD
+          Value: !Ref DatabasePassword
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: PGDATABASE
+          Value: !Ref DatabaseName
+  
+        # HTTPS Configuration
+        - !If
+          - UseSSL
+          - Namespace: aws:elbv2:listener:443
+            OptionName: ListenerEnabled
+            Value: true
+          - !Ref AWS::NoValue
+        - !If
+          - UseSSL
+          - Namespace: aws:elbv2:listener:443
+            OptionName: Protocol
+            Value: HTTPS
+          - !Ref AWS::NoValue
+        - !If
+          - UseSSL
+          - Namespace: aws:elbv2:listener:443
+            OptionName: SSLCertificateArns
+            Value: !Ref SSLCertificateArn
+          - !Ref AWS::NoValue
+
+Outputs:
+  ApplicationURL:
+    Description: URL of the Elastic Beanstalk environment
+    Value: !GetAtt ElasticBeanstalkEnvironment.EndpointURL
+  
+  DatabaseEndpoint:
+    Description: Endpoint of the RDS database
+    Value: !GetAtt Database.Endpoint.Address
+  
+  DatabasePort:
+    Description: Port of the RDS database
+    Value: !GetAtt Database.Endpoint.Port

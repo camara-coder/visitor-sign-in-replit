@@ -1,0 +1,22 @@
+[Unit]
+Description=Visitor Sign-In Application
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/opt/visitor-app
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=visitor-app
+Environment=NODE_ENV=production
+Environment=PORT=8080
+
+# Environment variables will be loaded from /etc/visitor-app.env
+EnvironmentFile=/etc/visitor-app.env
+
+[Install]
+WantedBy=multi-user.target
