@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Visitor Sign-In System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .navbar-brand {
+            font-weight: 700;
+        }
+        .sidebar {
+            min-width: 250px;
+            background-color: #f8f9fa;
+            min-height: calc(100vh - 56px);
+            border-right: 1px solid #dee2e6;
+        }
+        .sidebar .nav-link {
+            color: #495057;
+            border-radius: 0;
+        }
+        .sidebar .nav-link.active {
+            background-color: #e9ecef;
+            color: #0d6efd;
+            font-weight: 500;
+        }
+        .sidebar .nav-link:hover {
+            background-color: #e9ecef;
+        }
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+        }
+        .stat-card {
+            border-left: 4px solid;
+            background-color: white;
+        }
+        .stat-card.primary {
+            border-left-color: #0d6efd;
+        }
+        .stat-card.success {
+            border-left-color: #198754;
+        }
+        .stat-card.warning {
+            border-left-color: #ffc107;
+        }
+        .stat-card.info {
+            border-left-color: #0dcaf0;
+        }
+        .stat-card .icon {
+            font-size: 2rem;
+            opacity: 0.2;
+        }
+        .qr-code-container {
+            max-width: 300px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .qr-code {
+            height: 200px;
+            width: 200px;
+            background-color: #f8f9fa;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #dee2e6;
+        }
+        #visitorTable th {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Visitor Sign-In System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#visitors">Visitors</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#events">Events</a>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center">
+                    <span class="text-light me-3" id="user-info">Welcome, User</span>
+                    <button class="btn btn-outline-light" id="logout-btn">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <div class="sidebar d-none d-lg-block">
+            <div class="p-3 border-bottom">
+                <h5>Menu</h5>
+            </div>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#dashboard">
+                        <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#event-management">
+                        <i class="bi bi-calendar-event me-2"></i> Event Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#visitors">
+                        <i class="bi bi-people me-2"></i> Visitor List
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#qr-code">
+                        <i class="bi bi-qr-code me-2"></i> QR Code
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#settings">
+                        <i class="bi bi-gear me-2"></i> Settings
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <h1 class="mb-4">Dashboard</h1>
+
+            <!-- Status panel -->
+            <div class="alert alert-success" id="status-panel">
+                <strong>Active Event:</strong> <span id="event-name">Company Open House</span>
+                <button class="btn btn-sm btn-outline-success float-end" id="toggle-event-btn">Disable Event</button>
+            </div>
+
+            <!-- Statistics -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="stat-card primary p-3 h-100 rounded shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-primary">Total Visitors</h6>
+                                <h3 id="total-visitors">27</h3>
+                            </div>
+                            <div class="icon text-primary">
+                                <i class="bi bi-people-fill"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stat-card success p-3 h-100 rounded shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-success">Check-ins Today</h6>
+                                <h3 id="today-checkins">5</h3>
+                            </div>
+                            <div class="icon text-success">
+                                <i class="bi bi-calendar-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stat-card warning p-3 h-100 rounded shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-warning">Total Events</h6>
+                                <h3 id="total-events">3</h3>
+                            </div>
+                            <div class="icon text-warning">
+                                <i class="bi bi-calendar-event"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stat-card info p-3 h-100 rounded shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-info">Avg. Duration</h6>
+                                <h3 id="avg-duration">45m</h3>
+                            </div>
+                            <div class="icon text-info">
+                                <i class="bi bi-clock"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Visitors Panel -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Visitors</h5>
+                    <a href="#visitors" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="visitorTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Check-in Time</th>
+                                    <th scope="col">Phone</th>
+                                    <th scope="col">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>John Doe</td>
+                                    <td>Today, 9:30 AM</td>
+                                    <td>(555) 123-4567</td>
+                                    <td><span class="badge bg-success">Checked In</span></td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>Jane Smith</td>
+                                    <td>Today, 10:15 AM</td>
+                                    <td>(555) 987-6543</td>
+                                    <td><span class="badge bg-success">Checked In</span></td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>Robert Johnson</td>
+                                    <td>Today, 11:05 AM</td>
+                                    <td>(555) 456-7890</td>
+                                    <td><span class="badge bg-success">Checked In</span></td>
+                                </tr>
+                                <tr>
+                                    <td>4</td>
+                                    <td>Emily Wilson</td>
+                                    <td>Today, 1:30 PM</td>
+                                    <td>(555) 789-0123</td>
+                                    <td><span class="badge bg-success">Checked In</span></td>
+                                </tr>
+                                <tr>
+                                    <td>5</td>
+                                    <td>Michael Brown</td>
+                                    <td>Today, 2:45 PM</td>
+                                    <td>(555) 234-5678</td>
+                                    <td><span class="badge bg-success">Checked In</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Code Generator -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Event QR Code</h5>
+                </div>
+                <div class="card-body">
+                    <div class="qr-code-container">
+                        <div class="qr-code">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://example.com/signin/123" alt="Event QR Code">
+                        </div>
+                        <button class="btn btn-primary" id="download-qr">Download QR Code</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let currentEvent = null;
+        let allVisitors = [];
+        
+        // Retrieve user data from localStorage
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is logged in
+            const userData = localStorage.getItem('userData');
+            if (!userData) {
+                // Redirect to login if not logged in
+                window.location.href = '/';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(userData);
+                // Update user info in the header
+                document.getElementById('user-info').textContent = `Welcome, ${user.username}`;
+                
+                // Setup logout button
+                document.getElementById('logout-btn').addEventListener('click', function() {
+                    localStorage.removeItem('userData');
+                    window.location.href = '/';
+                });
+                
+                // Load data
+                loadDashboardData(user.id);
+                
+                // Set up event handlers
+                setupEventHandlers(user.id);
+                
+            } catch (e) {
+                console.error('Error parsing user data', e);
+                localStorage.removeItem('userData');
+                window.location.href = '/';
+            }
+        });
+        
+        // Load all dashboard data
+        async function loadDashboardData(userId) {
+            try {
+                // Fetch events
+                const eventsResponse = await fetch('/api/events');
+                if (eventsResponse.ok) {
+                    const events = await eventsResponse.json();
+                    
+                    // Find active event
+                    currentEvent = events.find(e => e.status === 'enabled');
+                    
+                    // Update events count
+                    document.getElementById('total-events').textContent = events.length;
+                    
+                    // Update event panel
+                    updateEventPanel();
+                    
+                    // Update QR code if there's an active event
+                    if (currentEvent) {
+                        // Set QR code image
+                        const signInUrl = `${window.location.origin}/signin?event=${currentEvent.id}`;
+                        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(signInUrl)}`;
+                        const qrCodeImg = document.querySelector('.qr-code img');
+                        if (qrCodeImg) {
+                            qrCodeImg.src = qrCodeUrl;
+                            qrCodeImg.alt = `QR Code for ${currentEvent.title}`;
+                        }
+                        
+                        // Fetch visitors for this event
+                        loadVisitors(currentEvent.id);
+                    } else {
+                        // No active event
+                        document.getElementById('status-panel').classList.replace('alert-success', 'alert-warning');
+                        document.getElementById('status-panel').innerHTML = '<strong>No Active Event:</strong> Enable an event to start collecting visitor registrations.';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+        
+        // Load visitors for a specific event
+        async function loadVisitors(eventId) {
+            try {
+                const response = await fetch(`/api/visitors?eventId=${eventId}`);
+                if (response.ok) {
+                    allVisitors = await response.json();
+                    
+                    // Update visitors count
+                    document.getElementById('total-visitors').textContent = allVisitors.length;
+                    
+                    // Update visitors table
+                    updateVisitorsTable();
+                    
+                    // Calculate today's check-ins
+                    const today = new Date().toDateString();
+                    const todayCheckins = allVisitors.filter(visitor => 
+                        new Date(visitor.checkInTime).toDateString() === today
+                    ).length;
+                    document.getElementById('today-checkins').textContent = todayCheckins;
+                }
+            } catch (error) {
+                console.error('Error loading visitors:', error);
+            }
+        }
+        
+        // Update event panel with current event data
+        function updateEventPanel() {
+            const statusPanel = document.getElementById('status-panel');
+            const toggleBtn = document.getElementById('toggle-event-btn');
+            
+            if (currentEvent) {
+                statusPanel.classList.remove('alert-warning', 'alert-danger');
+                statusPanel.classList.add('alert-success');
+                statusPanel.innerHTML = `<strong>Active Event:</strong> <span id="event-name">${currentEvent.title}</span>`;
+                
+                toggleBtn.textContent = 'Disable Event';
+                toggleBtn.classList.remove('btn-outline-danger');
+                toggleBtn.classList.add('btn-outline-success');
+            } else {
+                statusPanel.classList.remove('alert-success', 'alert-danger');
+                statusPanel.classList.add('alert-warning');
+                statusPanel.innerHTML = '<strong>No Active Event:</strong> Enable an event to start collecting visitor registrations.';
+                
+                toggleBtn.textContent = 'Create New Event';
+                toggleBtn.classList.remove('btn-outline-success');
+                toggleBtn.classList.add('btn-outline-primary');
+            }
+        }
+        
+        // Update visitors table with latest data
+        function updateVisitorsTable() {
+            const tbody = document.querySelector('#visitorTable tbody');
+            tbody.innerHTML = '';
+            
+            // Get the most recent 5 visitors
+            const recentVisitors = [...allVisitors]
+                .sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime))
+                .slice(0, 5);
+            
+            recentVisitors.forEach((visitor, index) => {
+                const tr = document.createElement('tr');
+                
+                // Format date
+                const checkInTime = new Date(visitor.checkInTime);
+                const formattedTime = checkInTime.toLocaleString([], { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${visitor.firstName} ${visitor.lastName}</td>
+                    <td>${formattedTime}</td>
+                    <td>${visitor.phone || 'N/A'}</td>
+                    <td><span class="badge bg-success">Checked In</span></td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+            
+            // If there are no visitors, show a message
+            if (recentVisitors.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td colspan="5" class="text-center">No visitors have checked in yet.</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+        
+        // Set up event handlers
+        function setupEventHandlers(userId) {
+            // Event toggle button
+            document.getElementById('toggle-event-btn').addEventListener('click', async function() {
+                const btn = this;
+                
+                if (currentEvent) {
+                    // Disable the current event
+                    try {
+                        const response = await fetch(`/api/events/${currentEvent.id}/disable`, {
+                            method: 'PUT'
+                        });
+                        
+                        if (response.ok) {
+                            currentEvent = null;
+                            updateEventPanel();
+                        } else {
+                            alert('Failed to disable event');
+                        }
+                    } catch (error) {
+                        console.error('Error disabling event:', error);
+                        alert('An error occurred while disabling the event');
+                    }
+                } else {
+                    // Create a new event
+                    try {
+                        const eventTitle = prompt('Enter event title:');
+                        if (!eventTitle) return;
+                        
+                        const response = await fetch('/api/events', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                title: eventTitle,
+                                description: `Event created on ${new Date().toLocaleDateString()}`,
+                                location: 'Main Office',
+                                userId
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            currentEvent = await response.json();
+                            updateEventPanel();
+                            
+                            // Reload dashboard data to update events count
+                            loadDashboardData(userId);
+                        } else {
+                            alert('Failed to create event');
+                        }
+                    } catch (error) {
+                        console.error('Error creating event:', error);
+                        alert('An error occurred while creating the event');
+                    }
+                }
+            });
+            
+            // QR code download button
+            document.getElementById('download-qr').addEventListener('click', function() {
+                if (!currentEvent) {
+                    alert('No active event. Please create an event first.');
+                    return;
+                }
+                
+                const qrCodeImg = document.querySelector('.qr-code img');
+                if (qrCodeImg) {
+                    // Create a temporary link to download the image
+                    const link = document.createElement('a');
+                    link.href = qrCodeImg.src;
+                    link.download = `event-qr-code-${currentEvent.id}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } else {
+                    alert('QR code not available');
+                }
+            });
+        }
+    </script>
+</body>
+</html>
