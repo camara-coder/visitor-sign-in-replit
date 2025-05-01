@@ -390,6 +390,9 @@
                     // Update event panel
                     updateEventPanel();
                     
+                    // Update past events table
+                    updatePastEventsTable(events);
+                    
                     // Update QR code if there's an active event
                     if (currentEvent) {
                         // Set QR code image
@@ -619,6 +622,17 @@
                 }
             });
             
+            // Set up event action buttons for past events
+            document.body.addEventListener('click', function(e) {
+                // Use event delegation for the enable buttons
+                if (e.target && e.target.classList.contains('enable-event-btn')) {
+                    const eventId = e.target.getAttribute('data-event-id');
+                    if (eventId) {
+                        enableEvent(eventId, userId);
+                    }
+                }
+            });
+            
             // QR code download button
             document.getElementById('download-qr').addEventListener('click', function() {
                 if (!currentEvent) {
@@ -714,6 +728,83 @@
                     console.error('Error creating event:', error);
                     alert('An error occurred while creating the event');
                 }
+            }
+        }
+        
+        // Update the past events table
+        function updatePastEventsTable(events) {
+            const tbody = document.querySelector('#past-events-table tbody');
+            
+            // Filter to only show disabled/past events
+            const pastEvents = events.filter(event => event.status === 'disabled');
+            
+            if (pastEvents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No past events</td></tr>';
+                return;
+            }
+            
+            // Sort events by creation date, newest first
+            pastEvents.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            // Clear the table
+            tbody.innerHTML = '';
+            
+            // Add each past event to the table
+            pastEvents.forEach(event => {
+                const tr = document.createElement('tr');
+                
+                // Format date
+                const eventDate = new Date(event.createdAt);
+                const formattedDate = eventDate.toLocaleDateString();
+                
+                tr.innerHTML = `
+                    <td>${event.title}</td>
+                    <td>${formattedDate}</td>
+                    <td><span class="badge bg-secondary">Disabled</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary enable-event-btn" data-event-id="${event.id}">
+                            Enable
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+        }
+        
+        // Enable a past event
+        async function enableEvent(eventId, userId) {
+            try {
+                // Confirm with the user
+                const confirmEnable = confirm("Enabling this event will disable any currently active event. Continue?");
+                if (!confirmEnable) return;
+                
+                const response = await fetch(`/api/events/${eventId}/enable`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    // Get the updated event data
+                    currentEvent = await response.json();
+                    
+                    // Show success message
+                    alert(`Event "${currentEvent.title}" enabled successfully`);
+                    
+                    // Update UI elements
+                    updateEventPanel();
+                    
+                    // Reload dashboard data
+                    loadDashboardData(userId);
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to enable event: ${error.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error enabling event:', error);
+                alert('An error occurred while enabling the event');
             }
         }
     </script>
