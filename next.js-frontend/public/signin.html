@@ -118,8 +118,16 @@
                     </label>
                 </div>
                 
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="remember-check" checked>
+                    <label class="form-check-label" for="remember-check">
+                        Remember me on this device
+                    </label>
+                </div>
+                
                 <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary">Sign In</button>
+                    <button type="submit" class="btn btn-primary mb-2">Sign In</button>
+                    <button type="button" id="clear-data-btn" class="btn btn-outline-secondary btn-sm">Clear Saved Information</button>
                 </div>
             </form>
         </div>
@@ -194,6 +202,9 @@
             const urlParams = new URLSearchParams(window.location.search);
             const eventId = urlParams.get('event') || '1';
             
+            // Load visitor data from localStorage if available
+            loadVisitorData();
+            
             // Fetch event details from the API
             fetchEventDetails(eventId);
             
@@ -207,6 +218,22 @@
                 const phone = document.getElementById('phone').value;
                 const address = document.getElementById('address').value;
                 const sendUpdates = document.getElementById('notify-check').checked;
+                const rememberMe = document.getElementById('remember-check').checked;
+                
+                // Save visitor data if "Remember me" is checked
+                if (rememberMe) {
+                    saveVisitorData({
+                        firstName,
+                        lastName,
+                        email,
+                        phone,
+                        address,
+                        sendUpdates
+                    });
+                } else {
+                    // Clear any saved data if "Remember me" is unchecked
+                    localStorage.removeItem('visitorData');
+                }
                 
                 try {
                     // Send data to server
@@ -285,6 +312,18 @@
                 window.open(shareUrl, '_blank');
                 alert('YouTube sharing: Create a quick video about your experience at the event!');
             });
+            
+            // Set up clear data button
+            document.getElementById('clear-data-btn').addEventListener('click', function() {
+                if (confirm('Are you sure you want to clear your saved information?')) {
+                    localStorage.removeItem('visitorData');
+                    document.getElementById('visitor-form').reset();
+                    alert('Your saved information has been cleared.');
+                    
+                    // Uncheck "Remember me" checkbox
+                    document.getElementById('remember-check').checked = false;
+                }
+            });
         });
         
         // Function to fetch event details from the API
@@ -343,6 +382,55 @@
                 console.error('Error fetching event details:', error);
                 document.getElementById('event-status').classList.replace('alert-success', 'alert-danger');
                 document.getElementById('event-status').innerHTML = '<strong>Error:</strong> Unable to load event details.';
+            }
+        }
+        
+        // Function to save visitor data to localStorage
+        function saveVisitorData(data) {
+            try {
+                localStorage.setItem('visitorData', JSON.stringify(data));
+            } catch (error) {
+                console.error('Error saving visitor data:', error);
+            }
+        }
+        
+        // Function to load visitor data from localStorage
+        function loadVisitorData() {
+            try {
+                const savedData = localStorage.getItem('visitorData');
+                if (savedData) {
+                    const visitorData = JSON.parse(savedData);
+                    
+                    // Populate form fields with saved data
+                    document.getElementById('first-name').value = visitorData.firstName || '';
+                    document.getElementById('last-name').value = visitorData.lastName || '';
+                    document.getElementById('email').value = visitorData.email || '';
+                    document.getElementById('phone').value = visitorData.phone || '';
+                    document.getElementById('address').value = visitorData.address || '';
+                    document.getElementById('notify-check').checked = visitorData.sendUpdates || false;
+                    
+                    // Add a small notification that data was loaded
+                    const formContainer = document.querySelector('.signin-container');
+                    const notification = document.createElement('div');
+                    notification.className = 'alert alert-info mb-4 d-flex align-items-center';
+                    notification.innerHTML = `
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <div>Your information has been pre-filled from your previous visit.</div>
+                    `;
+                    
+                    // Insert after the event status alert
+                    const eventStatus = document.getElementById('event-status');
+                    eventStatus.parentNode.insertBefore(notification, eventStatus.nextSibling);
+                    
+                    // Auto-hide the notification after 5 seconds
+                    setTimeout(() => {
+                        notification.style.transition = 'opacity 1s';
+                        notification.style.opacity = '0';
+                        setTimeout(() => notification.remove(), 1000);
+                    }, 5000);
+                }
+            } catch (error) {
+                console.error('Error loading visitor data:', error);
             }
         }
     </script>
