@@ -409,6 +409,129 @@ app.put('/api/events/:id/disable', async (req, res) => {
   }
 });
 
+app.post('/api/events/:id/copy', async (req, res) => {
+  const eventId = req.params.id;
+  const userId = req.body.userId || '1'; // For simplicity, default to user 1
+  const organizationId = userId; // Map userId to organizationId
+  
+  try {
+    // First check if there's any active event
+    const activeEventCheck = await db.query("SELECT id FROM events WHERE status = 'enabled' LIMIT 1");
+    
+    if (activeEventCheck.rows.length > 0) {
+      return res.status(400).json({ message: 'Cannot copy event while there is an active event. Please disable the current active event first.' });
+    }
+    
+    // Get the event to copy
+    const eventResult = await db.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    const eventToCopy = eventResult.rows[0];
+    
+    // Check if the event is disabled
+    if (eventToCopy.status !== 'disabled') {
+      return res.status(400).json({ message: 'Only disabled events can be copied' });
+    }
+    
+    // Create end date (24 hours from now)
+    const endDate = new Date(Date.now() + 86400000);
+    
+    // Create a date suffix for the title
+    const dateSuffix = new Date().toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+    
+    // Create a new title with the date
+    const newTitle = `${eventToCopy.title} - ${dateSuffix}`;
+    
+    // Insert new event into the database with status 'enabled'
+    const result = await db.query(
+      `INSERT INTO events 
+       (title, description, organization_id, status, location, end_date) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
+       RETURNING *`,
+      [newTitle, eventToCopy.description, organizationId, 'enabled', eventToCopy.location, endDate]
+    );
+    
+    const newEvent = result.rows[0];
+    
+    // Transform database field names to match our API format
+    const formattedEvent = {
+      id: newEvent.id.toString(),
+      title: newEvent.title,
+      description: newEvent.description,
+      organizationId: newEvent.organization_id.toString(),
+      status: newEvent.status,
+      location: newEvent.location,
+      startDate: newEvent.start_date,
+      endDate: newEvent.end_date,
+      createdAt: newEvent.created_at
+    };
+    
+    res.status(201).json(formattedEvent);
+  } catch (error) {
+    console.error('Error copying event:', error.message || error);
+    console.error('Error stack:', error.stack);
+    
+    // Fallback to in-memory if database error
+    try {
+      // Check if there's any active event
+      const activeEvent = inMemory.events.find(e => e.status === 'enabled');
+      
+      if (activeEvent) {
+        return res.status(400).json({ message: 'Cannot copy event while there is an active event. Please disable the current active event first.' });
+      }
+      
+      // Get the event to copy
+      const eventToCopy = inMemory.events.find(e => e.id === eventId);
+      
+      if (!eventToCopy) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+      
+      // Check if the event is disabled
+      if (eventToCopy.status !== 'disabled') {
+        return res.status(400).json({ message: 'Only disabled events can be copied' });
+      }
+      
+      // Create a date suffix for the title
+      const dateSuffix = new Date().toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric'
+      });
+      
+      // Create a new title with the date
+      const newTitle = `${eventToCopy.title} - ${dateSuffix}`;
+      
+      // Create new event in memory
+      const newEvent = {
+        id: (inMemory.events.length + 1).toString(),
+        title: newTitle,
+        description: eventToCopy.description,
+        organizationId: eventToCopy.organizationId,
+        status: 'enabled',
+        location: eventToCopy.location,
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 86400000).toISOString() // 24 hours later
+      };
+      
+      // Add new event
+      inMemory.events.push(newEvent);
+      
+      res.status(201).json(newEvent);
+    } catch (fallbackError) {
+      console.error('Error in fallback copy event:', fallbackError);
+      res.status(500).json({ message: 'Failed to copy event' });
+    }
+  }
+});
+
 app.put('/api/events/:id/enable', async (req, res) => {
   const eventId = req.params.id;
   

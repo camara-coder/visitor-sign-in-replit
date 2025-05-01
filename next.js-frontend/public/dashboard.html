@@ -804,14 +804,64 @@
                     <td>${formattedDate}</td>
                     <td><span class="badge bg-secondary">Disabled</span></td>
                     <td>
-                        <button class="btn btn-sm btn-primary enable-event-btn" data-event-id="${event.id}">
-                            Enable
-                        </button>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-primary enable-event-btn" data-event-id="${event.id}">
+                                Enable
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary copy-event-btn" data-event-id="${event.id}">
+                                Copy
+                            </button>
+                        </div>
                     </td>
                 `;
                 
                 tbody.appendChild(tr);
             });
+        }
+        
+        // Copy an event
+        async function copyEvent(eventId, userId) {
+            try {
+                // Check if there's an active event first
+                if (currentEvent) {
+                    alert("Cannot copy event while there is an active event. Please disable the current event first.");
+                    return;
+                }
+                
+                // Confirm with the user
+                const confirmCopy = confirm("This will create a new copy of this event with today's date and make it active. Continue?");
+                if (!confirmCopy) return;
+                
+                const response = await fetch(`/api/events/${eventId}/copy`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        userId: userId
+                    })
+                });
+                
+                if (response.ok) {
+                    // Get the newly created event
+                    currentEvent = await response.json();
+                    
+                    // Show success message
+                    alert(`Event "${currentEvent.title}" created and enabled successfully!`);
+                    
+                    // Update UI elements
+                    updateEventPanel();
+                    
+                    // Reload dashboard data
+                    loadDashboardData(userId);
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to copy event: ${error.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error copying event:', error);
+                alert('An error occurred while copying the event');
+            }
         }
         
         // Enable a past event
