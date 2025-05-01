@@ -4,80 +4,81 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visitor Analytics - Sign-In System</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            background-color: #f8f9fa;
         }
-        .navbar-brand {
-            font-weight: 700;
+        .navbar {
+            background-color: #343a40;
         }
         .sidebar {
-            min-width: 250px;
-            background-color: #f8f9fa;
+            width: 240px;
             min-height: calc(100vh - 56px);
+            background-color: #f8f9fa;
             border-right: 1px solid #dee2e6;
-        }
-        .sidebar .nav-link {
-            color: #495057;
-            border-radius: 0;
-        }
-        .sidebar .nav-link.active {
-            background-color: #e9ecef;
-            color: #0d6efd;
-            font-weight: 500;
-        }
-        .sidebar .nav-link:hover {
-            background-color: #e9ecef;
         }
         .main-content {
             flex: 1;
-            padding: 2rem;
+            padding: 20px;
+        }
+        .nav-link {
+            color: #495057;
+        }
+        .nav-link:hover {
+            color: #007bff;
+        }
+        .nav-link.active {
+            color: #007bff;
+            font-weight: 600;
         }
         .chart-container {
             background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            margin-bottom: 20px;
         }
         .stat-card {
-            border-left: 4px solid;
             background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         }
         .stat-card.primary {
-            border-left-color: #0d6efd;
+            border-left: 4px solid #007bff;
         }
         .stat-card.success {
-            border-left-color: #198754;
+            border-left: 4px solid #28a745;
         }
         .stat-card.warning {
-            border-left-color: #ffc107;
+            border-left: 4px solid #ffc107;
         }
         .stat-card.info {
-            border-left-color: #0dcaf0;
+            border-left: 4px solid #17a2b8;
         }
-        .stat-card .icon {
+        .icon {
             font-size: 2rem;
-            opacity: 0.2;
+            opacity: 0.7;
         }
-        .date-range-selector {
-            padding: 1rem;
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
+        .date-filter {
+            margin-bottom: 20px;
+        }
+        @media (max-width: 991.98px) {
+            .sidebar {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">Visitor Sign-In System</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -92,7 +93,10 @@
                         <a class="nav-link" href="/dashboard#visitors">Visitors</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="/analytics.html">Analytics</a>
+                        <a class="nav-link" href="/dashboard#events">Events</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/analytics">Analytics</a>
                     </li>
                 </ul>
                 <div class="d-flex align-items-center">
@@ -126,7 +130,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link active" href="/analytics.html">
+                    <a class="nav-link active" href="/analytics">
                         <i class="bi bi-graph-up me-2"></i> Analytics
                     </a>
                 </li>
@@ -145,36 +149,41 @@
 
         <!-- Main Content -->
         <div class="main-content">
-            <h1 class="mb-4">Visitor Analytics</h1>
+            <h1 class="mb-4">Analytics Dashboard</h1>
             
-            <!-- Event Selector -->
-            <div class="mb-4">
-                <select class="form-select" id="event-selector">
-                    <option value="">Loading events...</option>
-                </select>
-            </div>
-            
-            <!-- Date Range Selector -->
-            <div class="date-range-selector mb-4">
-                <div class="row">
-                    <div class="col-md-5">
-                        <label for="start-date" class="form-label">Start Date</label>
-                        <input type="date" class="form-control" id="start-date">
-                    </div>
-                    <div class="col-md-5">
-                        <label for="end-date" class="form-label">End Date</label>
-                        <input type="date" class="form-control" id="end-date">
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button class="btn btn-primary w-100" id="apply-date-filter">Apply</button>
+            <!-- Filter Controls -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Analytics Filters</h5>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="event-filter" class="form-label">Event</label>
+                            <select class="form-select" id="event-filter">
+                                <option value="all">All Events</option>
+                                <!-- Event options will be populated dynamically -->
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="date-range" class="form-label">Date Range</label>
+                            <select class="form-select" id="date-range">
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="week" selected>Last 7 Days</option>
+                                <option value="month">Last 30 Days</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" id="apply-filters">Apply Filters</button>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Statistics Cards -->
+            <!-- Overview Statistics -->
             <div class="row mb-4">
                 <div class="col-md-3 mb-3">
-                    <div class="stat-card primary p-3 h-100 rounded shadow-sm">
+                    <div class="stat-card primary p-3 h-100 rounded">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <h6 class="text-primary">Total Visitors</h6>
@@ -187,11 +196,11 @@
                     </div>
                 </div>
                 <div class="col-md-3 mb-3">
-                    <div class="stat-card success p-3 h-100 rounded shadow-sm">
+                    <div class="stat-card success p-3 h-100 rounded">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="text-success">Average per Day</h6>
-                                <h3 id="avg-per-day">0</h3>
+                                <h6 class="text-success">Check-ins Today</h6>
+                                <h3 id="today-checkins">0</h3>
                             </div>
                             <div class="icon text-success">
                                 <i class="bi bi-calendar-check"></i>
@@ -200,79 +209,118 @@
                     </div>
                 </div>
                 <div class="col-md-3 mb-3">
-                    <div class="stat-card warning p-3 h-100 rounded shadow-sm">
+                    <div class="stat-card warning p-3 h-100 rounded">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="text-warning">Peak Hour</h6>
-                                <h3 id="peak-hour">N/A</h3>
+                                <h6 class="text-warning">Unique Visitors</h6>
+                                <h3 id="unique-visitors">0</h3>
                             </div>
                             <div class="icon text-warning">
-                                <i class="bi bi-clock"></i>
+                                <i class="bi bi-person-check"></i>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-3 mb-3">
-                    <div class="stat-card info p-3 h-100 rounded shadow-sm">
+                    <div class="stat-card info p-3 h-100 rounded">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="text-info">Email Subscribers</h6>
-                                <h3 id="email-subscribers">0</h3>
+                                <h6 class="text-info">Return Rate</h6>
+                                <h3 id="return-rate">0%</h3>
                             </div>
                             <div class="icon text-info">
-                                <i class="bi bi-envelope"></i>
+                                <i class="bi bi-arrow-repeat"></i>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Charts -->
-            <div class="row">
-                <div class="col-lg-6 mb-4">
+            <!-- Check-ins Over Time Chart -->
+            <div class="row mb-4">
+                <div class="col-lg-8 mb-4">
                     <div class="chart-container">
-                        <h5 class="mb-3">Visitors per Day</h5>
-                        <canvas id="visitors-per-day-chart"></canvas>
+                        <h5>Visitor Check-ins Over Time</h5>
+                        <canvas id="checkin-chart"></canvas>
                     </div>
                 </div>
-                <div class="col-lg-6 mb-4">
-                    <div class="chart-container">
-                        <h5 class="mb-3">Visitors by Hour</h5>
-                        <canvas id="visitors-by-hour-chart"></canvas>
+                <div class="col-lg-4 mb-4">
+                    <div class="chart-container h-100">
+                        <h5>Check-in Times Distribution</h5>
+                        <canvas id="time-distribution-chart"></canvas>
                     </div>
                 </div>
             </div>
             
-            <!-- More Charts -->
-            <div class="row">
-                <div class="col-lg-12 mb-4">
-                    <div class="chart-container">
-                        <h5 class="mb-3">Visitor Trend</h5>
-                        <canvas id="visitor-trend-chart"></canvas>
+            <!-- Visitors by Source and Demographics -->
+            <div class="row mb-4">
+                <div class="col-md-6 mb-4">
+                    <div class="chart-container h-100">
+                        <h5>Top Referral Sources</h5>
+                        <canvas id="referral-chart"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="chart-container h-100">
+                        <h5>Visitor Demographics</h5>
+                        <div id="demographics-container" class="text-center p-5">
+                            <p class="text-muted">Demographics data not available</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Visitors -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Visitors</h5>
+                    <a href="/dashboard#visitors" class="btn btn-sm btn-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="recent-visitors-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Check-in Time</th>
+                                    <th scope="col">Event</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="text-center">Loading visitor data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
+    
     <!-- Add JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Global variables
-        let allVisitors = [];
-        let currentEvent = null;
-        let allEvents = [];
+        let visitorData = [];
+        let events = [];
+        let selectedEventId = 'all';
+        let selectedDateRange = 'week';
+        let charts = {};
         
-        // Date range
-        let startDate = new Date();
-        startDate.setDate(startDate.getDate() - 7); // Default to last 7 days
-        let endDate = new Date();
+        // Colors for charts
+        const chartColors = [
+            'rgba(54, 162, 235, 0.8)',
+            'rgba(255, 99, 132, 0.8)',
+            'rgba(75, 192, 192, 0.8)',
+            'rgba(255, 159, 64, 0.8)',
+            'rgba(153, 102, 255, 0.8)',
+            'rgba(255, 205, 86, 0.8)',
+            'rgba(201, 203, 207, 0.8)'
+        ];
         
-        // Chart instances
-        let visitorPerDayChart;
-        let visitorByHourChart;
-        let visitorTrendChart;
-        
+        // Initialize page on load
         document.addEventListener('DOMContentLoaded', function() {
             // Check if user is logged in
             const userData = localStorage.getItem('userData');
@@ -282,488 +330,381 @@
                 return;
             }
             
-            // Update user info
-            const user = JSON.parse(userData);
-            document.getElementById('user-info').textContent = `Welcome, ${user.username}`;
-            
-            // Setup logout button
-            document.getElementById('logout-btn').addEventListener('click', function() {
+            try {
+                const user = JSON.parse(userData);
+                // Update user info in the header
+                document.getElementById('user-info').textContent = `Welcome, ${user.username}`;
+                
+                // Setup logout button
+                document.getElementById('logout-btn').addEventListener('click', function() {
+                    localStorage.removeItem('userData');
+                    window.location.href = '/';
+                });
+                
+                // Set up filter event handlers
+                document.getElementById('apply-filters').addEventListener('click', applyFilters);
+                
+                // Load events to populate filter dropdown
+                loadEvents();
+                
+                // Load initial data
+                loadAnalyticsData();
+                
+            } catch (e) {
+                console.error('Error parsing user data', e);
                 localStorage.removeItem('userData');
                 window.location.href = '/';
-            });
-            
-            // Set default date values
-            document.getElementById('start-date').valueAsDate = startDate;
-            document.getElementById('end-date').valueAsDate = endDate;
-            
-            // Load all events and initialize event selector
-            loadEvents();
-            
-            // Set up date filter button
-            document.getElementById('apply-date-filter').addEventListener('click', function() {
-                const startDateInput = document.getElementById('start-date').valueAsDate;
-                const endDateInput = document.getElementById('end-date').valueAsDate;
-                
-                if (startDateInput && endDateInput) {
-                    startDate = startDateInput;
-                    endDate = endDateInput;
-                    
-                    // Update charts with new date range
-                    updateCharts();
-                }
-            });
+            }
         });
         
-        // Load events
+        // Load events for filter dropdown
         async function loadEvents() {
             try {
                 const response = await fetch('/api/events');
                 if (response.ok) {
-                    allEvents = await response.json();
+                    events = await response.json();
                     
-                    // Update event selector
-                    const eventSelector = document.getElementById('event-selector');
-                    eventSelector.innerHTML = '';
+                    // Populate event filter dropdown
+                    const eventFilter = document.getElementById('event-filter');
+                    eventFilter.innerHTML = '<option value="all">All Events</option>';
                     
-                    // Add option to view all events
-                    const allOption = document.createElement('option');
-                    allOption.value = 'all';
-                    allOption.textContent = 'All Events';
-                    eventSelector.appendChild(allOption);
-                    
-                    // Add each event
-                    allEvents.forEach(event => {
+                    events.forEach(event => {
                         const option = document.createElement('option');
                         option.value = event.id;
-                        option.textContent = event.title + (event.status === 'enabled' ? ' (Active)' : '');
-                        eventSelector.appendChild(option);
-                        
-                        // Set default to active event
+                        option.textContent = event.title;
                         if (event.status === 'enabled') {
-                            currentEvent = event;
+                            option.textContent += ' (Active)';
+                            // Preselect the active event
                             option.selected = true;
+                            selectedEventId = event.id;
                         }
+                        eventFilter.appendChild(option);
                     });
-                    
-                    // Handle event selection change
-                    eventSelector.addEventListener('change', function() {
-                        const selectedEventId = this.value;
-                        
-                        if (selectedEventId === 'all') {
-                            // Load visitors for all events
-                            loadAllVisitors();
-                        } else {
-                            // Find the selected event
-                            const selectedEvent = allEvents.find(e => e.id === selectedEventId);
-                            
-                            if (selectedEvent) {
-                                currentEvent = selectedEvent;
-                                // Load visitors for this event
-                                loadVisitors(selectedEvent.id);
-                            }
-                        }
-                    });
-                    
-                    // Load initial visitors data based on active event or all events
-                    if (currentEvent) {
-                        loadVisitors(currentEvent.id);
-                    } else if (allEvents.length > 0) {
-                        // Default to first event if no active event
-                        currentEvent = allEvents[0];
-                        loadVisitors(currentEvent.id);
-                    } else {
-                        // No events, show empty state
-                        updateChartsWithEmptyData();
-                    }
-                } else {
-                    console.error('Failed to load events');
                 }
             } catch (error) {
                 console.error('Error loading events:', error);
             }
         }
         
-        // Load visitors for a specific event
-        async function loadVisitors(eventId) {
+        // Apply filters when button is clicked
+        function applyFilters() {
+            selectedEventId = document.getElementById('event-filter').value;
+            selectedDateRange = document.getElementById('date-range').value;
+            loadAnalyticsData();
+        }
+        
+        // Load analytics data based on filters
+        async function loadAnalyticsData() {
             try {
-                const response = await fetch(`/api/visitors?eventId=${eventId}`);
+                // Fetch visitors data
+                let endpoint = '/api/visitors';
+                if (selectedEventId !== 'all') {
+                    endpoint += `?eventId=${selectedEventId}`;
+                }
+                
+                const response = await fetch(endpoint);
                 if (response.ok) {
-                    allVisitors = await response.json();
-                    updateCharts();
-                } else {
-                    console.error('Failed to load visitors');
+                    const allVisitors = await response.json();
+                    
+                    // Filter by date range if needed
+                    visitorData = filterVisitorsByDateRange(allVisitors, selectedDateRange);
+                    
+                    // Update statistics
+                    updateStatistics(visitorData);
+                    
+                    // Update charts
+                    updateCharts(visitorData);
+                    
+                    // Update recent visitors table
+                    updateRecentVisitorsTable(visitorData);
                 }
             } catch (error) {
-                console.error('Error loading visitors:', error);
+                console.error('Error loading analytics data:', error);
             }
         }
         
-        // Load all visitors
-        async function loadAllVisitors() {
-            try {
-                const response = await fetch('/api/visitors');
-                if (response.ok) {
-                    allVisitors = await response.json();
-                    updateCharts();
-                } else {
-                    console.error('Failed to load all visitors');
-                }
-            } catch (error) {
-                console.error('Error loading all visitors:', error);
-            }
-        }
-        
-        // Update all charts and stats
-        function updateCharts() {
-            if (allVisitors.length === 0) {
-                updateChartsWithEmptyData();
-                return;
-            }
+        // Filter visitors by date range
+        function filterVisitorsByDateRange(visitors, range) {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             
-            // Filter visitors by date range
-            const filteredVisitors = allVisitors.filter(visitor => {
+            return visitors.filter(visitor => {
                 const checkInDate = new Date(visitor.checkInTime);
-                return checkInDate >= startDate && checkInDate <= endDate;
+                
+                switch (range) {
+                    case 'today':
+                        return checkInDate >= today;
+                    case 'yesterday':
+                        const yesterday = new Date(today);
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        return checkInDate >= yesterday && checkInDate < today;
+                    case 'week':
+                        const weekAgo = new Date(today);
+                        weekAgo.setDate(weekAgo.getDate() - 7);
+                        return checkInDate >= weekAgo;
+                    case 'month':
+                        const monthAgo = new Date(today);
+                        monthAgo.setDate(monthAgo.getDate() - 30);
+                        return checkInDate >= monthAgo;
+                    case 'all':
+                    default:
+                        return true;
+                }
             });
-            
-            // Update stats
-            updateStats(filteredVisitors);
-            
-            // Update charts
-            updateVisitorsPerDayChart(filteredVisitors);
-            updateVisitorsByHourChart(filteredVisitors);
-            updateVisitorTrendChart(filteredVisitors);
         }
         
-        // Update stats based on filtered visitors
-        function updateStats(visitors) {
+        // Update statistics based on current visitor data
+        function updateStatistics(visitors) {
             // Total visitors
             document.getElementById('total-visitors').textContent = visitors.length;
             
-            // Average per day
-            const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) || 1;
-            const avgPerDay = (visitors.length / daysDiff).toFixed(1);
-            document.getElementById('avg-per-day').textContent = avgPerDay;
+            // Check-ins today
+            const today = new Date().toDateString();
+            const todayCheckins = visitors.filter(v => 
+                new Date(v.checkInTime).toDateString() === today
+            ).length;
+            document.getElementById('today-checkins').textContent = todayCheckins;
             
-            // Peak hour
-            const hourCounts = Array(24).fill(0);
-            visitors.forEach(visitor => {
-                const hour = new Date(visitor.checkInTime).getHours();
-                hourCounts[hour]++;
-            });
+            // Unique visitors (based on email)
+            const uniqueEmails = new Set(visitors.map(v => v.email));
+            const uniqueVisitors = uniqueEmails.size;
+            document.getElementById('unique-visitors').textContent = uniqueVisitors;
             
-            const peakHourIndex = hourCounts.indexOf(Math.max(...hourCounts));
-            const peakHourFormatted = peakHourIndex < 12 
-                ? `${peakHourIndex === 0 ? 12 : peakHourIndex}am` 
-                : `${peakHourIndex === 12 ? 12 : peakHourIndex - 12}pm`;
-            
-            document.getElementById('peak-hour').textContent = visitors.length > 0 ? peakHourFormatted : 'N/A';
-            
-            // Email subscribers
-            const subscribers = visitors.filter(v => v.sendUpdates).length;
-            document.getElementById('email-subscribers').textContent = subscribers;
+            // Return rate
+            let returnRate = 0;
+            if (uniqueVisitors > 0) {
+                returnRate = Math.round((1 - (uniqueVisitors / visitors.length)) * 100);
+                // Make sure it's never negative
+                returnRate = Math.max(0, returnRate);
+            }
+            document.getElementById('return-rate').textContent = `${returnRate}%`;
         }
         
-        // Update visitors per day chart
-        function updateVisitorsPerDayChart(visitors) {
+        // Update all charts
+        function updateCharts(visitors) {
+            updateCheckinChart(visitors);
+            updateTimeDistributionChart(visitors);
+            updateReferralChart(visitors);
+        }
+        
+        // Update check-in over time chart
+        function updateCheckinChart(visitors) {
             // Group visitors by day
-            const visitorsPerDay = {};
+            const visitorsByDay = {};
             
-            // Create array of dates between start and end date
-            const dateArray = [];
-            let currentDate = new Date(startDate);
-            
-            while (currentDate <= endDate) {
-                const dateString = currentDate.toISOString().split('T')[0];
-                visitorsPerDay[dateString] = 0;
-                dateArray.push(dateString);
+            visitors.forEach(visitor => {
+                const date = new Date(visitor.checkInTime);
+                const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
                 
-                const newDate = new Date(currentDate);
-                newDate.setDate(newDate.getDate() + 1);
-                currentDate = newDate;
+                if (!visitorsByDay[dateStr]) {
+                    visitorsByDay[dateStr] = 0;
+                }
+                visitorsByDay[dateStr]++;
+            });
+            
+            // Create sorted labels and data
+            const labels = Object.keys(visitorsByDay).sort();
+            const data = labels.map(date => visitorsByDay[date]);
+            
+            // Create or update chart
+            const ctx = document.getElementById('checkin-chart').getContext('2d');
+            
+            if (charts.checkin) {
+                charts.checkin.destroy();
             }
             
-            // Count visitors for each day
-            visitors.forEach(visitor => {
-                const dateString = new Date(visitor.checkInTime).toISOString().split('T')[0];
-                if (visitorsPerDay[dateString] !== undefined) {
-                    visitorsPerDay[dateString]++;
+            charts.checkin = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.map(date => formatDate(date)),
+                    datasets: [{
+                        label: 'Visitor Check-ins',
+                        data: data,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true,
+                        pointBackgroundColor: 'rgba(54, 162, 235, 1)',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
                 }
             });
             
-            // Prepare chart data
-            const labels = dateArray.map(date => {
-                const d = new Date(date);
-                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            });
-            
-            const data = dateArray.map(date => visitorsPerDay[date]);
-            
-            // Create or update chart
-            const ctx = document.getElementById('visitors-per-day-chart').getContext('2d');
-            
-            if (visitorPerDayChart) {
-                visitorPerDayChart.data.labels = labels;
-                visitorPerDayChart.data.datasets[0].data = data;
-                visitorPerDayChart.update();
-            } else {
-                visitorPerDayChart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Visitors',
-                            data: data,
-                            backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                            borderColor: 'rgba(13, 110, 253, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    precision: 0
-                                }
-                            }
-                        }
-                    }
-                });
-            }
+            // Set a fixed height for the chart container
+            ctx.canvas.parentNode.style.height = '300px';
         }
         
-        // Update visitors by hour chart
-        function updateVisitorsByHourChart(visitors) {
-            // Group visitors by hour
+        // Update time distribution chart (visitors by hour of day)
+        function updateTimeDistributionChart(visitors) {
+            // Group visitors by hour of day
             const hourCounts = Array(24).fill(0);
             
             visitors.forEach(visitor => {
-                const hour = new Date(visitor.checkInTime).getHours();
+                const date = new Date(visitor.checkInTime);
+                const hour = date.getHours();
                 hourCounts[hour]++;
             });
             
-            // Prepare chart data
-            const labels = Array.from({ length: 24 }, (_, i) => {
-                if (i === 0) return '12am';
-                if (i < 12) return `${i}am`;
-                if (i === 12) return '12pm';
-                return `${i - 12}pm`;
+            // Create labels for hours
+            const hourLabels = Array.from({ length: 24 }, (_, i) => {
+                // Format as 12-hour time with AM/PM
+                const hour = i % 12 || 12;
+                const ampm = i < 12 ? 'AM' : 'PM';
+                return `${hour}${ampm}`;
             });
             
             // Create or update chart
-            const ctx = document.getElementById('visitors-by-hour-chart').getContext('2d');
+            const ctx = document.getElementById('time-distribution-chart').getContext('2d');
             
-            if (visitorByHourChart) {
-                visitorByHourChart.data.datasets[0].data = hourCounts;
-                visitorByHourChart.update();
-            } else {
-                visitorByHourChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Visitors',
-                            data: hourCounts,
-                            backgroundColor: 'rgba(25, 135, 84, 0.2)',
-                            borderColor: 'rgba(25, 135, 84, 1)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    precision: 0
-                                }
+            if (charts.timeDistribution) {
+                charts.timeDistribution.destroy();
+            }
+            
+            charts.timeDistribution = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: hourLabels,
+                    datasets: [{
+                        label: 'Visitors by Hour',
+                        data: hourCounts,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
                             }
                         }
                     }
-                });
-            }
+                }
+            });
+            
+            // Set a fixed height for the chart container
+            ctx.canvas.parentNode.style.height = '300px';
         }
         
-        // Update visitor trend chart
-        function updateVisitorTrendChart(visitors) {
-            // Sort visitors by check-in time
-            const sortedVisitors = [...visitors].sort((a, b) => 
-                new Date(a.checkInTime) - new Date(b.checkInTime)
-            );
+        // Update referral sources chart (example data since we don't track referrals)
+        function updateReferralChart(visitors) {
+            // Example data - in a real app, you'd get this from actual referral data
+            const sources = {
+                'QR Code': Math.round(visitors.length * 0.4),
+                'Direct Link': Math.round(visitors.length * 0.3),
+                'Email Invite': Math.round(visitors.length * 0.2),
+                'Social Media': Math.round(visitors.length * 0.1)
+            };
             
-            // Prepare chart data
-            const labels = [];
-            const data = [];
-            let cumulativeCount = 0;
+            const ctx = document.getElementById('referral-chart').getContext('2d');
             
-            if (sortedVisitors.length > 0) {
-                // Get unique dates from visitors
-                const uniqueDates = new Set();
-                sortedVisitors.forEach(visitor => {
-                    const dateString = new Date(visitor.checkInTime).toISOString().split('T')[0];
-                    uniqueDates.add(dateString);
-                });
-                
-                // Convert to array and sort
-                const sortedDates = Array.from(uniqueDates).sort();
-                
-                // Create cumulative count data
-                sortedDates.forEach(dateString => {
-                    const dateVisitors = sortedVisitors.filter(visitor => 
-                        new Date(visitor.checkInTime).toISOString().split('T')[0] === dateString
-                    );
-                    
-                    cumulativeCount += dateVisitors.length;
-                    
-                    const formattedDate = new Date(dateString).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric' 
-                    });
-                    
-                    labels.push(formattedDate);
-                    data.push(cumulativeCount);
-                });
+            if (charts.referral) {
+                charts.referral.destroy();
             }
             
-            // Create or update chart
-            const ctx = document.getElementById('visitor-trend-chart').getContext('2d');
-            
-            if (visitorTrendChart) {
-                visitorTrendChart.data.labels = labels;
-                visitorTrendChart.data.datasets[0].data = data;
-                visitorTrendChart.update();
-            } else {
-                visitorTrendChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Cumulative Visitors',
-                            data: data,
-                            backgroundColor: 'rgba(13, 202, 240, 0.2)',
-                            borderColor: 'rgba(13, 202, 240, 1)',
-                            borderWidth: 2,
-                            tension: 0.1,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    precision: 0
-                                }
-                            }
+            charts.referral = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(sources),
+                    datasets: [{
+                        data: Object.values(sources),
+                        backgroundColor: chartColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
                         }
                     }
-                });
-            }
+                }
+            });
+            
+            // Set a fixed height for the chart container
+            ctx.canvas.parentNode.style.height = '300px';
         }
         
-        // Update charts with empty data
-        function updateChartsWithEmptyData() {
-            document.getElementById('total-visitors').textContent = '0';
-            document.getElementById('avg-per-day').textContent = '0';
-            document.getElementById('peak-hour').textContent = 'N/A';
-            document.getElementById('email-subscribers').textContent = '0';
+        // Update recent visitors table
+        function updateRecentVisitorsTable(visitors) {
+            const tbody = document.getElementById('recent-visitors-table').querySelector('tbody');
+            tbody.innerHTML = '';
             
-            // Create empty charts
-            const emptyLabels = [];
-            const emptyData = [];
+            // Sort by check-in time (newest first) and take top 10
+            const recentVisitors = [...visitors]
+                .sort((a, b) => new Date(b.checkInTime) - new Date(a.checkInTime))
+                .slice(0, 10);
             
-            // Create empty visitor per day chart
-            const perDayCtx = document.getElementById('visitors-per-day-chart').getContext('2d');
-            if (visitorPerDayChart) {
-                visitorPerDayChart.data.labels = emptyLabels;
-                visitorPerDayChart.data.datasets[0].data = emptyData;
-                visitorPerDayChart.update();
-            } else {
-                visitorPerDayChart = new Chart(perDayCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['No Data'],
-                        datasets: [{
-                            label: 'Visitors',
-                            data: [0],
-                            backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                            borderColor: 'rgba(13, 110, 253, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
+            if (recentVisitors.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="4" class="text-center">No visitor data available</td>';
+                tbody.appendChild(row);
+                return;
             }
             
-            // Create empty visitor by hour chart
-            const byHourCtx = document.getElementById('visitors-by-hour-chart').getContext('2d');
-            if (visitorByHourChart) {
-                visitorByHourChart.data.labels = emptyLabels;
-                visitorByHourChart.data.datasets[0].data = emptyData;
-                visitorByHourChart.update();
-            } else {
-                visitorByHourChart = new Chart(byHourCtx, {
-                    type: 'line',
-                    data: {
-                        labels: ['No Data'],
-                        datasets: [{
-                            label: 'Visitors',
-                            data: [0],
-                            backgroundColor: 'rgba(25, 135, 84, 0.2)',
-                            borderColor: 'rgba(25, 135, 84, 1)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            }
-            
-            // Create empty visitor trend chart
-            const trendCtx = document.getElementById('visitor-trend-chart').getContext('2d');
-            if (visitorTrendChart) {
-                visitorTrendChart.data.labels = emptyLabels;
-                visitorTrendChart.data.datasets[0].data = emptyData;
-                visitorTrendChart.update();
-            } else {
-                visitorTrendChart = new Chart(trendCtx, {
-                    type: 'line',
-                    data: {
-                        labels: ['No Data'],
-                        datasets: [{
-                            label: 'Cumulative Visitors',
-                            data: [0],
-                            backgroundColor: 'rgba(13, 202, 240, 0.2)',
-                            borderColor: 'rgba(13, 202, 240, 1)',
-                            borderWidth: 2,
-                            tension: 0.1,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            }
+            recentVisitors.forEach(visitor => {
+                const row = document.createElement('tr');
+                
+                // Find event name
+                const event = events.find(e => e.id === visitor.eventId);
+                const eventName = event ? event.title : 'Unknown Event';
+                
+                // Format date
+                const checkInTime = new Date(visitor.checkInTime);
+                const formattedTime = checkInTime.toLocaleString();
+                
+                row.innerHTML = `
+                    <td>${visitor.firstName} ${visitor.lastName}</td>
+                    <td>${visitor.email}</td>
+                    <td>${formattedTime}</td>
+                    <td>${eventName}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Helper function to format dates
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const month = date.toLocaleString('default', { month: 'short' });
+            const day = date.getDate();
+            return `${month} ${day}`;
         }
     </script>
 </body>
