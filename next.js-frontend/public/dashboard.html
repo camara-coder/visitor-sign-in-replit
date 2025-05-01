@@ -620,61 +620,61 @@
                         
                         const eventDesc = prompt('Enter event description (optional):');
                         const eventLocation = prompt('Enter event location (optional):') || 'Main Office';
-                    
-                    try {
-                        const response = await fetch('/api/events', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                title: eventTitle,
-                                description: eventDesc || `Event created on ${new Date().toLocaleDateString()}`,
-                                location: eventLocation,
-                                userId: userId
-                            })
-                        });
                         
-                        if (response.ok) {
-                            currentEvent = await response.json();
-                            
-                            // Show success message
-                            alert(`Event "${currentEvent.title}" created successfully`);
-                            
-                            // Update UI elements
-                            updateEventPanel();
-                            
-                            // Reload dashboard data to update events count and update QR code
-                            loadDashboardData(userId);
-                        } else {
-                            const errorData = await response.json().catch(() => ({}));
-                            alert(`Failed to create event: ${errorData.message || 'Server error'}`);
-                        }
-                    } catch (error) {
-                        console.error('Error creating event:', error);
-                        
-                        // Verify if the event was actually created despite the error
                         try {
-                            const checkResponse = await fetch('/api/events');
-                            if (checkResponse.ok) {
-                                const events = await checkResponse.json();
-                                const possibleNewEvent = events.find(e => e.status === 'enabled');
+                            const response = await fetch('/api/events', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    title: eventTitle,
+                                    description: eventDesc || `Event created on ${new Date().toLocaleDateString()}`,
+                                    location: eventLocation,
+                                    userId: userId
+                                })
+                            });
+                            
+                            if (response.ok) {
+                                currentEvent = await response.json();
                                 
-                                if (possibleNewEvent && possibleNewEvent.title === eventTitle) {
-                                    // Event was created successfully despite the error
-                                    currentEvent = possibleNewEvent;
-                                    alert('Event was created successfully despite an error in processing.');
-                                    updateEventPanel();
-                                    loadDashboardData(userId);
-                                    return;
-                                }
+                                // Show success message
+                                alert(`Event "${currentEvent.title}" created successfully`);
+                                
+                                // Update UI elements
+                                updateEventPanel();
+                                
+                                // Reload dashboard data to update events count and update QR code
+                                loadDashboardData(userId);
+                            } else {
+                                const errorData = await response.json().catch(() => ({}));
+                                alert(`Failed to create event: ${errorData.message || 'Server error'}`);
                             }
-                        } catch (checkError) {
-                            console.error('Error checking events after creation error:', checkError);
+                        } catch (error) {
+                            console.error('Error creating event:', error);
+                            
+                            // Verify if the event was actually created despite the error
+                            try {
+                                const checkResponse = await fetch('/api/events');
+                                if (checkResponse.ok) {
+                                    const events = await checkResponse.json();
+                                    const possibleNewEvent = events.find(e => e.status === 'enabled');
+                                    
+                                    if (possibleNewEvent && possibleNewEvent.title === eventTitle) {
+                                        // Event was created successfully despite the error
+                                        currentEvent = possibleNewEvent;
+                                        alert('Event was created successfully despite an error in processing.');
+                                        updateEventPanel();
+                                        loadDashboardData(userId);
+                                        return;
+                                    }
+                                }
+                            } catch (checkError) {
+                                console.error('Error checking events after creation error:', checkError);
+                            }
+                            
+                            alert(`An error occurred while creating the event: ${error.message || 'Unknown error'}`);
                         }
-                        
-                        alert(`An error occurred while creating the event: ${error.message || 'Unknown error'}`);
-                    }
                 }
             });
             
