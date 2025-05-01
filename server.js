@@ -293,6 +293,7 @@ app.get('/api/events/:id', async (req, res) => {
 app.post('/api/events', async (req, res) => {
   const { title, description, location } = req.body;
   const userId = req.body.userId || '1'; // For simplicity, default to user 1
+  const organizationId = userId; // Map userId to organizationId
   
   try {
     // First, disable all other events
@@ -307,7 +308,7 @@ app.post('/api/events', async (req, res) => {
        (title, description, organization_id, status, location, end_date) 
        VALUES ($1, $2, $3, $4, $5, $6) 
        RETURNING *`,
-      [title, description, userId, 'enabled', location, endDate]
+      [title, description, organizationId, 'enabled', location, endDate]
     );
     
     const newEvent = result.rows[0];
@@ -335,7 +336,7 @@ app.post('/api/events', async (req, res) => {
       id: (inMemory.events.length + 1).toString(),
       title,
       description,
-      organizationId: userId,
+      organizationId: organizationId,
       status: 'enabled',
       location,
       startDate: new Date().toISOString(),

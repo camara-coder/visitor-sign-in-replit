@@ -476,25 +476,38 @@
                     // Disable the current event
                     try {
                         const response = await fetch(`/api/events/${currentEvent.id}/disable`, {
-                            method: 'PUT'
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
                         });
                         
                         if (response.ok) {
                             currentEvent = null;
                             updateEventPanel();
+                            
+                            // Show confirmation to user
+                            alert('Event disabled successfully');
+                            
+                            // Reload dashboard data
+                            loadDashboardData(userId);
                         } else {
-                            alert('Failed to disable event');
+                            const error = await response.json();
+                            alert(`Failed to disable event: ${error.message || 'Unknown error'}`);
                         }
                     } catch (error) {
                         console.error('Error disabling event:', error);
                         alert('An error occurred while disabling the event');
                     }
                 } else {
-                    // Create a new event
+                    // Create a new event with a form dialog
+                    const eventTitle = prompt('Enter event title:');
+                    if (!eventTitle) return;
+                    
+                    const eventDesc = prompt('Enter event description (optional):');
+                    const eventLocation = prompt('Enter event location (optional):') || 'Main Office';
+                    
                     try {
-                        const eventTitle = prompt('Enter event title:');
-                        if (!eventTitle) return;
-                        
                         const response = await fetch('/api/events', {
                             method: 'POST',
                             headers: {
@@ -502,20 +515,26 @@
                             },
                             body: JSON.stringify({
                                 title: eventTitle,
-                                description: `Event created on ${new Date().toLocaleDateString()}`,
-                                location: 'Main Office',
-                                userId
+                                description: eventDesc || `Event created on ${new Date().toLocaleDateString()}`,
+                                location: eventLocation,
+                                userId: userId
                             })
                         });
                         
                         if (response.ok) {
                             currentEvent = await response.json();
+                            
+                            // Show success message
+                            alert(`Event "${currentEvent.title}" created successfully`);
+                            
+                            // Update UI elements
                             updateEventPanel();
                             
-                            // Reload dashboard data to update events count
+                            // Reload dashboard data to update events count and update QR code
                             loadDashboardData(userId);
                         } else {
-                            alert('Failed to create event');
+                            const errorData = await response.json().catch(() => ({}));
+                            alert(`Failed to create event: ${errorData.message || 'Server error'}`);
                         }
                     } catch (error) {
                         console.error('Error creating event:', error);
