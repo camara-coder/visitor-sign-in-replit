@@ -462,62 +462,77 @@
             const eventActionBtn = document.getElementById('event-action-btn');
             const activeEventInfo = document.getElementById('active-event-info');
             
-            // Check if all required elements exist
+            // Log which elements are missing, but continue with those that exist
             if (!statusPanel || !toggleBtn || !eventActionBtn || !activeEventInfo) {
-                console.error('One or more event panel elements not found. Missing:', 
+                console.log('One or more event panel elements not found. Missing:', 
                     !statusPanel ? 'statusPanel ' : '',
                     !toggleBtn ? 'toggleBtn ' : '',
                     !eventActionBtn ? 'eventActionBtn ' : '',
                     !activeEventInfo ? 'activeEventInfo' : ''
                 );
-                return;
             }
             
             if (currentEvent) {
                 // Update main status panel
-                statusPanel.classList.remove('alert-warning', 'alert-danger');
-                statusPanel.classList.add('alert-success');
-                statusPanel.innerHTML = `<strong>Active Event:</strong> <span id="event-name">${currentEvent.title}</span>`;
+                if (statusPanel) {
+                    statusPanel.classList.remove('alert-warning', 'alert-danger');
+                    statusPanel.classList.add('alert-success');
+                    statusPanel.innerHTML = `<strong>Active Event:</strong> <span id="event-name">${currentEvent.title}</span>`;
+                }
                 
-                toggleBtn.textContent = 'Disable Event';
-                toggleBtn.classList.remove('btn-outline-danger');
-                toggleBtn.classList.add('btn-outline-success');
+                if (toggleBtn) {
+                    toggleBtn.textContent = 'Disable Event';
+                    toggleBtn.classList.remove('btn-outline-danger');
+                    toggleBtn.classList.add('btn-outline-success');
+                }
                 
                 // Update event management section
-                activeEventInfo.innerHTML = `
-                    <div class="card border-success mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">${currentEvent.title}</h5>
-                            <p class="card-text">${currentEvent.description || 'No description provided'}</p>
-                            <p class="mb-1"><strong>Location:</strong> ${currentEvent.location || 'N/A'}</p>
-                            <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">Active</span></p>
-                            <p class="mb-1"><strong>Start Date:</strong> ${new Date(currentEvent.startDate).toLocaleString()}</p>
-                            <p class="mb-0"><strong>End Date:</strong> ${new Date(currentEvent.endDate).toLocaleString()}</p>
+                if (activeEventInfo) {
+                    activeEventInfo.innerHTML = `
+                        <div class="card border-success mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">${currentEvent.title}</h5>
+                                <p class="card-text">${currentEvent.description || 'No description provided'}</p>
+                                <p class="mb-1"><strong>Location:</strong> ${currentEvent.location || 'N/A'}</p>
+                                <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">Active</span></p>
+                                <p class="mb-1"><strong>Start Date:</strong> ${new Date(currentEvent.startDate).toLocaleString()}</p>
+                                <p class="mb-0"><strong>End Date:</strong> ${new Date(currentEvent.endDate).toLocaleString()}</p>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
                 
-                eventActionBtn.textContent = 'Disable Event';
-                eventActionBtn.classList.remove('btn-success');
-                eventActionBtn.classList.add('btn-danger');
+                if (eventActionBtn) {
+                    eventActionBtn.textContent = 'Disable Event';
+                    eventActionBtn.classList.remove('btn-success');
+                    eventActionBtn.classList.add('btn-danger');
+                }
             } else {
                 // Update main status panel
-                statusPanel.classList.remove('alert-success', 'alert-danger');
-                statusPanel.classList.add('alert-warning');
-                statusPanel.innerHTML = '<strong>No Active Event:</strong> Enable an event to start collecting visitor registrations.';
+                if (statusPanel) {
+                    statusPanel.classList.remove('alert-success', 'alert-danger');
+                    statusPanel.classList.add('alert-warning');
+                    statusPanel.innerHTML = '<strong>No Active Event:</strong> Enable an event to start collecting visitor registrations.';
+                }
                 
-                toggleBtn.textContent = 'Create New Event';
-                toggleBtn.classList.remove('btn-outline-success');
-                toggleBtn.classList.add('btn-outline-primary');
+                if (toggleBtn) {
+                    toggleBtn.textContent = 'Create New Event';
+                    toggleBtn.classList.remove('btn-outline-success');
+                    toggleBtn.classList.add('btn-outline-primary');
+                }
                 
                 // Update event management section
-                activeEventInfo.innerHTML = `
-                    <p class="text-muted">No active event. Create a new event to start collecting visitor registrations.</p>
-                `;
+                if (activeEventInfo) {
+                    activeEventInfo.innerHTML = `
+                        <p class="text-muted">No active event. Create a new event to start collecting visitor registrations.</p>
+                    `;
+                }
                 
-                eventActionBtn.textContent = 'Create New Event';
-                eventActionBtn.classList.remove('btn-danger');
-                eventActionBtn.classList.add('btn-success');
+                if (eventActionBtn) {
+                    eventActionBtn.textContent = 'Create New Event';
+                    eventActionBtn.classList.remove('btn-danger');
+                    eventActionBtn.classList.add('btn-success');
+                }
             }
         }
         
