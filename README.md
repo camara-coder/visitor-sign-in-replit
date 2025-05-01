@@ -52,15 +52,17 @@ A comprehensive full-stack web application for visitor registration and event ma
 
 ### AWS Deployment
 
-The application includes scripts and configuration for easy deployment to AWS Elastic Beanstalk.
+The application includes scripts and configuration for multiple AWS deployment options.
 
-#### Prerequisites for AWS Deployment
+#### Option 1: Elastic Beanstalk Deployment
+
+##### Prerequisites
 
 - AWS Account with appropriate permissions
 - AWS CLI installed and configured
 - EB CLI installed
 
-#### Deployment Steps
+##### Deployment Steps
 
 1. Setup AWS Parameters:
    ```
@@ -74,7 +76,34 @@ The application includes scripts and configuration for easy deployment to AWS El
    ```
    This script will package and deploy the application to AWS Elastic Beanstalk.
 
-For detailed AWS deployment instructions, see the [deployment guide](deploy/README.md).
+For detailed Elastic Beanstalk deployment instructions, see the [deployment guide](deploy/README.md).
+
+#### Option 2: AWS CodePipeline Deployment
+
+This option sets up a complete CI/CD pipeline using AWS CodePipeline, CodeCommit, and CodeBuild.
+
+##### Prerequisites
+
+- AWS Account with appropriate permissions
+- AWS CLI installed and configured
+- Git installed locally
+
+##### Deployment Steps
+
+1. Run the all-in-one deployment script:
+   ```
+   cd scripts
+   ./deploy-with-codepipeline.sh
+   ```
+   This script will:
+   - Set up IAM roles and policies
+   - Create an S3 bucket for artifacts
+   - Deploy the CloudFormation stack for CodePipeline
+   - Optionally clone and push code to CodeCommit
+
+2. Monitor the pipeline in the AWS Console
+
+For step-by-step CodePipeline deployment instructions, see the [CodePipeline deployment guide](deploy/CODEPIPELINE_DEPLOYMENT_STEPS.md).
 
 ### Default Access
 
