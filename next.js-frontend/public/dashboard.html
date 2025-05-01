@@ -385,7 +385,10 @@
                     currentEvent = events.find(e => e.status === 'enabled');
                     
                     // Update events count
-                    document.getElementById('total-events').textContent = events.length;
+                    const totalEventsEl = document.getElementById('total-events');
+                    if (totalEventsEl) {
+                        totalEventsEl.textContent = events.length;
+                    }
                     
                     // Update event panel
                     updateEventPanel();
