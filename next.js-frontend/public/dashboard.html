@@ -411,8 +411,11 @@
                         loadVisitors(currentEvent.id);
                     } else {
                         // No active event
-                        document.getElementById('status-panel').classList.replace('alert-success', 'alert-warning');
-                        document.getElementById('status-panel').innerHTML = '<strong>No Active Event:</strong> Enable an event to start collecting visitor registrations.';
+                        const statusPanel = document.getElementById('status-panel');
+                        if (statusPanel) {
+                            statusPanel.classList.replace('alert-success', 'alert-warning');
+                            statusPanel.innerHTML = '<strong>No Active Event:</strong> Enable an event to start collecting visitor registrations.';
+                        }
                     }
                 }
             } catch (error) {
@@ -428,7 +431,10 @@
                     allVisitors = await response.json();
                     
                     // Update visitors count
-                    document.getElementById('total-visitors').textContent = allVisitors.length;
+                    const totalVisitorsEl = document.getElementById('total-visitors');
+                    if (totalVisitorsEl) {
+                        totalVisitorsEl.textContent = allVisitors.length;
+                    }
                     
                     // Update visitors table
                     updateVisitorsTable();
@@ -438,7 +444,11 @@
                     const todayCheckins = allVisitors.filter(visitor => 
                         new Date(visitor.checkInTime).toDateString() === today
                     ).length;
-                    document.getElementById('today-checkins').textContent = todayCheckins;
+                    
+                    const todayCheckinsEl = document.getElementById('today-checkins');
+                    if (todayCheckinsEl) {
+                        todayCheckinsEl.textContent = todayCheckins;
+                    }
                 }
             } catch (error) {
                 console.error('Error loading visitors:', error);
@@ -451,6 +461,17 @@
             const toggleBtn = document.getElementById('toggle-event-btn');
             const eventActionBtn = document.getElementById('event-action-btn');
             const activeEventInfo = document.getElementById('active-event-info');
+            
+            // Check if all required elements exist
+            if (!statusPanel || !toggleBtn || !eventActionBtn || !activeEventInfo) {
+                console.error('One or more event panel elements not found. Missing:', 
+                    !statusPanel ? 'statusPanel ' : '',
+                    !toggleBtn ? 'toggleBtn ' : '',
+                    !eventActionBtn ? 'eventActionBtn ' : '',
+                    !activeEventInfo ? 'activeEventInfo' : ''
+                );
+                return;
+            }
             
             if (currentEvent) {
                 // Update main status panel
@@ -503,6 +524,10 @@
         // Update visitors table with latest data
         function updateVisitorsTable() {
             const tbody = document.querySelector('#visitorTable tbody');
+            if (!tbody) {
+                console.error('Visitor table body element not found');
+                return;
+            }
             tbody.innerHTML = '';
             
             // Get the most recent 5 visitors
@@ -546,12 +571,19 @@
         // Set up event handlers
         function setupEventHandlers(userId) {
             // Event management action button
-            document.getElementById('event-action-btn').addEventListener('click', async function() {
-                handleEventAction(userId);
-            });
+            const eventActionBtn = document.getElementById('event-action-btn');
+            if (eventActionBtn) {
+                eventActionBtn.addEventListener('click', async function() {
+                    handleEventAction(userId);
+                });
+            } else {
+                console.error('Event action button not found');
+            }
             
             // Main dashboard event toggle button
-            document.getElementById('toggle-event-btn').addEventListener('click', async function() {
+            const toggleEventBtn = document.getElementById('toggle-event-btn');
+            if (toggleEventBtn) {
+                toggleEventBtn.addEventListener('click', async function() {
                 const btn = this;
                 
                 if (currentEvent) {
@@ -666,7 +698,9 @@
             });
             
             // QR code download button
-            document.getElementById('download-qr').addEventListener('click', function() {
+            const downloadQrBtn = document.getElementById('download-qr');
+            if (downloadQrBtn) {
+                downloadQrBtn.addEventListener('click', function() {
                 if (!currentEvent) {
                     alert('No active event. Please create an event first.');
                     return;
@@ -685,6 +719,9 @@
                     alert('QR code not available');
                 }
             });
+            } else {
+                console.error('Download QR code button not found');
+            }
         }
         
         // Handle event action (create or disable)
@@ -787,6 +824,10 @@
         // Update the past events table
         function updatePastEventsTable(events) {
             const tbody = document.querySelector('#past-events-table tbody');
+            if (!tbody) {
+                console.error('Past events table body element not found');
+                return;
+            }
             
             // Filter to only show disabled/past events
             const pastEvents = events.filter(event => event.status === 'disabled');
