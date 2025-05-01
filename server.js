@@ -3,35 +3,44 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const db = require('./database');
+const schema = require('./schema');
+const { promisify } = require('util');
+const bcrypt = require('bcryptjs') || { hashSync: (password) => password, compareSync: (password, hash) => password === hash };
 
 // Create express app
 const app = express();
 
-// In-memory storage (replace with database in production)
-const users = [
-  {
-    id: '1',
-    username: 'admin',
-    password: 'password',
-    organizationName: 'Demo Organization',
-    createdAt: new Date().toISOString()
-  }
-];
+// Initialize database schema
+schema.setupDatabase().catch(err => {
+  console.error('Failed to set up database schema:', err);
+});
 
-const events = [
-  {
-    id: '1',
-    title: 'Company Open House',
-    description: 'Annual company open house for visitors and prospective clients',
-    organizationId: '1',
-    status: 'enabled',
-    location: 'Main Office',
-    startDate: new Date().toISOString(),
-    endDate: new Date(Date.now() + 86400000).toISOString() // 24 hours later
-  }
-];
-
-const visitors = [];
+// In-memory fallback storage (used only if database connection fails)
+const inMemory = {
+  users: [
+    {
+      id: '1',
+      username: 'admin',
+      password: 'password',
+      organizationName: 'Demo Organization',
+      createdAt: new Date().toISOString()
+    }
+  ],
+  events: [
+    {
+      id: '1',
+      title: 'Company Open House',
+      description: 'Annual company open house for visitors and prospective clients',
+      organizationId: '1',
+      status: 'enabled',
+      location: 'Main Office',
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 86400000).toISOString() // 24 hours later
+    }
+  ],
+  visitors: []
+};
 
 // Middleware
 app.use(cors());
@@ -47,182 +56,573 @@ app.get('/api/health', (req, res) => {
 });
 
 // AUTHENTICATION ENDPOINTS
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   
-  // Find user by username and password
-  const user = users.find(u => u.username === username && u.password === password);
-  
-  if (user) {
-    // Send user data without password
-    const { password, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
-  } else {
-    res.status(401).json({ message: 'Invalid credentials' });
+  try {
+    // Try to find the user in the database
+    const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    
+    if (result.rows.length > 0) {
+      const user = result.rows[0];
+      
+      // Check if password matches
+      const passwordMatches = bcrypt.compareSync(password, user.password) || password === user.password;
+      
+      if (passwordMatches) {
+        // Transform database field names to match our API format
+        const userResponse = {
+          id: user.id.toString(),
+          username: user.username,
+          organizationName: user.organization_name,
+          createdAt: user.created_at
+        };
+        
+        res.json(userResponse);
+      } else {
+        res.status(401).json({ message: 'Invalid credentials' });
+      }
+    } else {
+      // Fallback to in-memory if user not found in database
+      const inMemoryUser = inMemory.users.find(u => u.username === username && u.password === password);
+      
+      if (inMemoryUser) {
+        const { password, ...userWithoutPassword } = inMemoryUser;
+        res.json(userWithoutPassword);
+      } else {
+        res.status(401).json({ message: 'Invalid credentials' });
+      }
+    }
+  } catch (error) {
+    console.error('Error during login:', error);
+    
+    // Fallback to in-memory if database error
+    const inMemoryUser = inMemory.users.find(u => u.username === username && u.password === password);
+    
+    if (inMemoryUser) {
+      const { password, ...userWithoutPassword } = inMemoryUser;
+      res.json(userWithoutPassword);
+    } else {
+      res.status(401).json({ message: 'Invalid credentials' });
+    }
   }
 });
 
-app.post('/api/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
   const { username, password, organizationName } = req.body;
   
-  // Check if username already exists
-  if (users.find(u => u.username === username)) {
-    return res.status(400).json({ message: 'Username already exists' });
+  try {
+    // Check if username already exists in the database
+    const existingUser = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+    
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
+    
+    // Hash the password
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    
+    // Insert new user into the database
+    const result = await db.query(
+      'INSERT INTO users (username, password, organization_name) VALUES ($1, $2, $3) RETURNING *',
+      [username, hashedPassword, organizationName]
+    );
+    
+    const newUser = result.rows[0];
+    
+    // Log for debugging
+    console.log('Registered new user:', username);
+    
+    // Transform database field names to match our API format
+    const userResponse = {
+      id: newUser.id.toString(),
+      username: newUser.username,
+      organizationName: newUser.organization_name,
+      createdAt: newUser.created_at
+    };
+    
+    res.status(201).json(userResponse);
+  } catch (error) {
+    console.error('Error during registration:', error);
+    
+    // Fallback to in-memory if database error
+    // Check if username already exists in memory
+    if (inMemory.users.find(u => u.username === username)) {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
+    
+    // Create new user in memory
+    const newUser = {
+      id: (inMemory.users.length + 1).toString(),
+      username,
+      password,
+      organizationName,
+      createdAt: new Date().toISOString()
+    };
+    
+    inMemory.users.push(newUser);
+    
+    console.log('Registered new user in memory:', username);
+    console.log('Current in-memory users:', inMemory.users.map(u => u.username));
+    
+    const { password: _, ...userWithoutPassword } = newUser;
+    res.status(201).json(userWithoutPassword);
   }
-  
-  // Create new user
-  const newUser = {
-    id: (users.length + 1).toString(),
-    username,
-    password,
-    organizationName,
-    createdAt: new Date().toISOString()
-  };
-  
-  // Add to users array
-  users.push(newUser);
-  
-  // Log for debugging
-  console.log('Registered new user:', username);
-  console.log('Current users:', users.map(u => u.username));
-  
-  // Return user data without password
-  const { password: _, ...userWithoutPassword } = newUser;
-  res.status(201).json(userWithoutPassword);
 });
 
 // EVENT MANAGEMENT ENDPOINTS
-app.get('/api/events', (req, res) => {
-  res.json(events);
-});
-
-app.get('/api/events/current', (req, res) => {
-  const activeEvent = events.find(e => e.status === 'enabled');
-  
-  if (activeEvent) {
-    res.json(activeEvent);
-  } else {
-    res.status(404).json({ message: 'No active event found' });
+app.get('/api/events', async (req, res) => {
+  try {
+    // Get all events from the database
+    const result = await db.query('SELECT * FROM events ORDER BY created_at DESC');
+    
+    // Transform database field names to match our API format
+    const events = result.rows.map(event => ({
+      id: event.id.toString(),
+      title: event.title,
+      description: event.description,
+      organizationId: event.organization_id.toString(),
+      status: event.status,
+      location: event.location,
+      startDate: event.start_date,
+      endDate: event.end_date,
+      createdAt: event.created_at
+    }));
+    
+    res.json(events);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    // Fallback to in-memory data
+    res.json(inMemory.events);
   }
 });
 
-app.get('/api/events/:id', (req, res) => {
-  const event = events.find(e => e.id === req.params.id);
-  
-  if (event) {
-    res.json(event);
-  } else {
-    res.status(404).json({ message: 'Event not found' });
+app.get('/api/events/current', async (req, res) => {
+  try {
+    // Get the active event from the database
+    const result = await db.query("SELECT * FROM events WHERE status = 'enabled' LIMIT 1");
+    
+    if (result.rows.length > 0) {
+      const event = result.rows[0];
+      
+      // Transform database field names to match our API format
+      const formattedEvent = {
+        id: event.id.toString(),
+        title: event.title,
+        description: event.description,
+        organizationId: event.organization_id.toString(),
+        status: event.status,
+        location: event.location,
+        startDate: event.start_date,
+        endDate: event.end_date,
+        createdAt: event.created_at
+      };
+      
+      res.json(formattedEvent);
+    } else {
+      // Try in-memory data if no active event in database
+      const activeEvent = inMemory.events.find(e => e.status === 'enabled');
+      
+      if (activeEvent) {
+        res.json(activeEvent);
+      } else {
+        res.status(404).json({ message: 'No active event found' });
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching current event:', error);
+    // Fallback to in-memory data
+    const activeEvent = inMemory.events.find(e => e.status === 'enabled');
+    
+    if (activeEvent) {
+      res.json(activeEvent);
+    } else {
+      res.status(404).json({ message: 'No active event found' });
+    }
   }
 });
 
-app.post('/api/events', (req, res) => {
+app.get('/api/events/:id', async (req, res) => {
+  const eventId = req.params.id;
+  
+  try {
+    // Get the event from the database
+    const result = await db.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    
+    if (result.rows.length > 0) {
+      const event = result.rows[0];
+      
+      // Transform database field names to match our API format
+      const formattedEvent = {
+        id: event.id.toString(),
+        title: event.title,
+        description: event.description,
+        organizationId: event.organization_id.toString(),
+        status: event.status,
+        location: event.location,
+        startDate: event.start_date,
+        endDate: event.end_date,
+        createdAt: event.created_at
+      };
+      
+      res.json(formattedEvent);
+    } else {
+      // Try in-memory data if event not found in database
+      const event = inMemory.events.find(e => e.id === eventId);
+      
+      if (event) {
+        res.json(event);
+      } else {
+        res.status(404).json({ message: 'Event not found' });
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching event:', error);
+    // Fallback to in-memory data
+    const event = inMemory.events.find(e => e.id === eventId);
+    
+    if (event) {
+      res.json(event);
+    } else {
+      res.status(404).json({ message: 'Event not found' });
+    }
+  }
+});
+
+app.post('/api/events', async (req, res) => {
   const { title, description, location } = req.body;
   const userId = req.body.userId || '1'; // For simplicity, default to user 1
   
-  // Create new event
-  const newEvent = {
-    id: (events.length + 1).toString(),
-    title,
-    description,
-    organizationId: userId,
-    status: 'enabled',
-    location,
-    startDate: new Date().toISOString(),
-    endDate: new Date(Date.now() + 86400000).toISOString() // 24 hours later
-  };
-  
-  // First, disable all other events
-  events.forEach(e => {
-    e.status = 'disabled';
-  });
-  
-  // Add new event
-  events.push(newEvent);
-  
-  res.status(201).json(newEvent);
-});
-
-app.put('/api/events/:id/disable', (req, res) => {
-  const event = events.find(e => e.id === req.params.id);
-  
-  if (event) {
-    event.status = 'disabled';
-    res.json(event);
-  } else {
-    res.status(404).json({ message: 'Event not found' });
+  try {
+    // First, disable all other events
+    await db.query("UPDATE events SET status = 'disabled'");
+    
+    // Create end date (24 hours from now)
+    const endDate = new Date(Date.now() + 86400000);
+    
+    // Insert new event into the database
+    const result = await db.query(
+      `INSERT INTO events 
+       (title, description, organization_id, status, location, end_date) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
+       RETURNING *`,
+      [title, description, userId, 'enabled', location, endDate]
+    );
+    
+    const newEvent = result.rows[0];
+    
+    // Transform database field names to match our API format
+    const formattedEvent = {
+      id: newEvent.id.toString(),
+      title: newEvent.title,
+      description: newEvent.description,
+      organizationId: newEvent.organization_id.toString(),
+      status: newEvent.status,
+      location: newEvent.location,
+      startDate: newEvent.start_date,
+      endDate: newEvent.end_date,
+      createdAt: newEvent.created_at
+    };
+    
+    res.status(201).json(formattedEvent);
+  } catch (error) {
+    console.error('Error creating event:', error);
+    
+    // Fallback to in-memory if database error
+    // Create new event in memory
+    const newEvent = {
+      id: (inMemory.events.length + 1).toString(),
+      title,
+      description,
+      organizationId: userId,
+      status: 'enabled',
+      location,
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 86400000).toISOString() // 24 hours later
+    };
+    
+    // First, disable all other events
+    inMemory.events.forEach(e => {
+      e.status = 'disabled';
+    });
+    
+    // Add new event
+    inMemory.events.push(newEvent);
+    
+    res.status(201).json(newEvent);
   }
 });
 
-app.put('/api/events/:id/enable', (req, res) => {
-  const eventToEnable = events.find(e => e.id === req.params.id);
+app.put('/api/events/:id/disable', async (req, res) => {
+  const eventId = req.params.id;
   
-  if (!eventToEnable) {
-    return res.status(404).json({ message: 'Event not found' });
+  try {
+    // Update the event in the database
+    const result = await db.query(
+      "UPDATE events SET status = 'disabled' WHERE id = $1 RETURNING *",
+      [eventId]
+    );
+    
+    if (result.rows.length > 0) {
+      const event = result.rows[0];
+      
+      // Transform database field names to match our API format
+      const formattedEvent = {
+        id: event.id.toString(),
+        title: event.title,
+        description: event.description,
+        organizationId: event.organization_id.toString(),
+        status: event.status,
+        location: event.location,
+        startDate: event.start_date,
+        endDate: event.end_date,
+        createdAt: event.created_at
+      };
+      
+      res.json(formattedEvent);
+    } else {
+      // Try in-memory data if event not found in database
+      const event = inMemory.events.find(e => e.id === eventId);
+      
+      if (event) {
+        event.status = 'disabled';
+        res.json(event);
+      } else {
+        res.status(404).json({ message: 'Event not found' });
+      }
+    }
+  } catch (error) {
+    console.error('Error disabling event:', error);
+    
+    // Fallback to in-memory data
+    const event = inMemory.events.find(e => e.id === eventId);
+    
+    if (event) {
+      event.status = 'disabled';
+      res.json(event);
+    } else {
+      res.status(404).json({ message: 'Event not found' });
+    }
   }
+});
+
+app.put('/api/events/:id/enable', async (req, res) => {
+  const eventId = req.params.id;
   
-  // Disable all events first
-  events.forEach(e => {
-    e.status = 'disabled';
-  });
-  
-  // Enable the requested event
-  eventToEnable.status = 'enabled';
-  res.json(eventToEnable);
+  try {
+    // First, disable all events
+    await db.query("UPDATE events SET status = 'disabled'");
+    
+    // Then enable the requested event
+    const result = await db.query(
+      "UPDATE events SET status = 'enabled' WHERE id = $1 RETURNING *",
+      [eventId]
+    );
+    
+    if (result.rows.length > 0) {
+      const event = result.rows[0];
+      
+      // Transform database field names to match our API format
+      const formattedEvent = {
+        id: event.id.toString(),
+        title: event.title,
+        description: event.description,
+        organizationId: event.organization_id.toString(),
+        status: event.status,
+        location: event.location,
+        startDate: event.start_date,
+        endDate: event.end_date,
+        createdAt: event.created_at
+      };
+      
+      res.json(formattedEvent);
+    } else {
+      // Try in-memory data if event not found in database
+      const eventToEnable = inMemory.events.find(e => e.id === eventId);
+      
+      if (!eventToEnable) {
+        return res.status(404).json({ message: 'Event not found' });
+      }
+      
+      // Disable all events first
+      inMemory.events.forEach(e => {
+        e.status = 'disabled';
+      });
+      
+      // Enable the requested event
+      eventToEnable.status = 'enabled';
+      res.json(eventToEnable);
+    }
+  } catch (error) {
+    console.error('Error enabling event:', error);
+    
+    // Fallback to in-memory data
+    const eventToEnable = inMemory.events.find(e => e.id === eventId);
+    
+    if (!eventToEnable) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+    
+    // Disable all events first
+    inMemory.events.forEach(e => {
+      e.status = 'disabled';
+    });
+    
+    // Enable the requested event
+    eventToEnable.status = 'enabled';
+    res.json(eventToEnable);
+  }
 });
 
 // VISITOR MANAGEMENT ENDPOINTS
-app.get('/api/visitors', (req, res) => {
+app.get('/api/visitors', async (req, res) => {
   const eventId = req.query.eventId;
   
-  if (eventId) {
-    const eventVisitors = visitors.filter(v => v.eventId === eventId);
-    res.json(eventVisitors);
-  } else {
+  try {
+    let query = 'SELECT * FROM visitors';
+    let params = [];
+    
+    if (eventId) {
+      query += ' WHERE event_id = $1';
+      params.push(eventId);
+    }
+    
+    query += ' ORDER BY check_in_time DESC';
+    
+    const result = await db.query(query, params);
+    
+    // Transform database field names to match our API format
+    const visitors = result.rows.map(visitor => ({
+      id: visitor.id.toString(),
+      firstName: visitor.first_name,
+      lastName: visitor.last_name,
+      email: visitor.email,
+      phone: visitor.phone,
+      address: visitor.address,
+      eventId: visitor.event_id.toString(),
+      checkInTime: visitor.check_in_time,
+      status: visitor.status,
+      sendUpdates: visitor.send_updates
+    }));
+    
     res.json(visitors);
+  } catch (error) {
+    console.error('Error fetching visitors:', error);
+    
+    // Fallback to in-memory data
+    if (eventId) {
+      const eventVisitors = inMemory.visitors.filter(v => v.eventId === eventId);
+      res.json(eventVisitors);
+    } else {
+      res.json(inMemory.visitors);
+    }
   }
 });
 
-app.post('/api/visitors', (req, res) => {
-  const { firstName, lastName, email, phone, address, eventId } = req.body;
+app.post('/api/visitors', async (req, res) => {
+  const { firstName, lastName, email, phone, address, eventId, sendUpdates } = req.body;
   
-  // Validate event exists
-  const event = events.find(e => e.id === eventId);
-  if (!event) {
-    return res.status(400).json({ message: 'Event not found' });
+  try {
+    // Validate event exists in the database
+    const eventResult = await db.query('SELECT * FROM events WHERE id = $1', [eventId]);
+    
+    if (eventResult.rows.length === 0) {
+      // Check in-memory if not found in database
+      const event = inMemory.events.find(e => e.id === eventId);
+      if (!event) {
+        return res.status(400).json({ message: 'Event not found' });
+      }
+    }
+    
+    // Insert new visitor into the database
+    const result = await db.query(
+      `INSERT INTO visitors 
+       (first_name, last_name, email, phone, address, event_id, send_updates) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+       RETURNING *`,
+      [firstName, lastName, email, phone || '', address || '', eventId, !!sendUpdates]
+    );
+    
+    const newVisitor = result.rows[0];
+    
+    // Transform database field names to match our API format
+    const formattedVisitor = {
+      id: newVisitor.id.toString(),
+      firstName: newVisitor.first_name,
+      lastName: newVisitor.last_name,
+      email: newVisitor.email,
+      phone: newVisitor.phone,
+      address: newVisitor.address,
+      eventId: newVisitor.event_id.toString(),
+      checkInTime: newVisitor.check_in_time,
+      status: newVisitor.status,
+      sendUpdates: newVisitor.send_updates
+    };
+    
+    // Log for debugging
+    console.log('New visitor checked in:', `${firstName} ${lastName}`);
+    
+    res.status(201).json(formattedVisitor);
+  } catch (error) {
+    console.error('Error registering visitor:', error);
+    
+    // Fallback to in-memory if database error
+    // Validate event exists in memory
+    const event = inMemory.events.find(e => e.id === eventId);
+    if (!event) {
+      return res.status(400).json({ message: 'Event not found' });
+    }
+    
+    // Create new visitor in memory
+    const newVisitor = {
+      id: (inMemory.visitors.length + 1).toString(),
+      firstName,
+      lastName,
+      email,
+      phone: phone || '',
+      address: address || '',
+      eventId,
+      checkInTime: new Date().toISOString(),
+      status: 'checked-in',
+      sendUpdates: !!sendUpdates
+    };
+    
+    // Add to in-memory visitors array
+    inMemory.visitors.push(newVisitor);
+    
+    // Log for debugging
+    console.log('New visitor checked in (in-memory):', `${firstName} ${lastName}`);
+    
+    res.status(201).json(newVisitor);
   }
-  
-  // Create new visitor
-  const newVisitor = {
-    id: (visitors.length + 1).toString(),
-    firstName,
-    lastName,
-    email,
-    phone: phone || '',
-    address: address || '',
-    eventId,
-    checkInTime: new Date().toISOString(),
-    status: 'checked-in'
-  };
-  
-  // Add to visitors array
-  visitors.push(newVisitor);
-  
-  // Log for debugging
-  console.log('New visitor checked in:', `${firstName} ${lastName}`);
-  
-  res.status(201).json(newVisitor);
 });
 
 // Get all users (for development purposes)
-app.get('/api/users', (req, res) => {
-  // Return users without passwords
-  const usersWithoutPasswords = users.map(user => {
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
-  });
-  
-  res.json(usersWithoutPasswords);
+app.get('/api/users', async (req, res) => {
+  try {
+    // Get all users from the database
+    const result = await db.query('SELECT id, username, organization_name, created_at FROM users');
+    
+    // Transform database field names to match our API format
+    const users = result.rows.map(user => ({
+      id: user.id.toString(),
+      username: user.username,
+      organizationName: user.organization_name,
+      createdAt: user.created_at
+    }));
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    
+    // Fallback to in-memory data
+    const usersWithoutPasswords = inMemory.users.map(user => {
+      const { password, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    });
+    
+    res.json(usersWithoutPasswords);
+  }
 });
 
 // STATIC ROUTES

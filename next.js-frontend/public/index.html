@@ -8,114 +8,111 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            padding-top: 20px;
-            line-height: 1.6;
+            min-height: 100vh;
+            background-color: #f8f9fa;
         }
-        .card {
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        .auth-card {
+            background-color: white;
+            border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            padding: 2rem;
         }
         .hero-section {
             background-color: #0d6efd;
             color: white;
-            padding: 40px;
-            border-radius: 5px;
+            border-radius: 10px;
+            padding: 2rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
-        .nav-pills .nav-link.active {
-            background-color: #0d6efd;
+        .nav-link {
+            cursor: pointer;
+        }
+        .form-control:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header class="mb-4">
-            <h1 class="text-center">Visitor Sign-In System</h1>
-            <p class="text-center text-secondary">Welcome to our visitor management platform</p>
-        </header>
-
-        <div class="row">
-            <!-- Left side - Authentication forms -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <ul class="nav nav-pills card-header-pills" id="auth-tabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login" type="button" role="tab" aria-selected="true">Login</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register" type="button" role="tab" aria-selected="false">Register</button>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="card-body">
-                        <div class="tab-content" id="auth-tabs-content">
-                            <!-- Login Form -->
-                            <div class="tab-pane fade show active" id="login" role="tabpanel" aria-labelledby="login-tab">
-                                <form id="login-form">
-                                    <div class="mb-3">
-                                        <label for="login-username" class="form-label">Username</label>
-                                        <input type="text" class="form-control" id="login-username" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="login-password" class="form-label">Password</label>
-                                        <input type="password" class="form-control" id="login-password" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary w-100">Login</button>
-                                </form>
-                            </div>
-                            
-                            <!-- Register Form -->
-                            <div class="tab-pane fade" id="register" role="tabpanel" aria-labelledby="register-tab">
-                                <form id="register-form">
-                                    <div class="mb-3">
-                                        <label for="register-username" class="form-label">Username</label>
-                                        <input type="text" class="form-control" id="register-username" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="register-organization" class="form-label">Organization Name</label>
-                                        <input type="text" class="form-control" id="register-organization">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="register-password" class="form-label">Password</label>
-                                        <input type="password" class="form-control" id="register-password" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="register-password-confirm" class="form-label">Confirm Password</label>
-                                        <input type="password" class="form-control" id="register-password-confirm" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary w-100">Register</button>
-                                </form>
-                            </div>
+    <div class="container auth-container">
+        <div class="row w-100">
+            <div class="col-md-6 mb-4 mb-md-0">
+                <div class="auth-card">
+                    <h2 class="text-center mb-4">Visitor Sign-In System</h2>
+                    
+                    <ul class="nav nav-tabs mb-4" id="auth-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link active" id="login-tab" data-bs-toggle="tab" href="#login" role="tab" aria-controls="login" aria-selected="true">Login</a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="register-tab" data-bs-toggle="tab" href="#register" role="tab" aria-controls="register" aria-selected="false">Register</a>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="auth-tabs-content">
+                        <!-- Login Form -->
+                        <div class="tab-pane fade show active" id="login" role="tabpanel" aria-labelledby="login-tab">
+                            <form id="login-form">
+                                <div class="mb-3">
+                                    <label for="login-username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="login-username" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="login-password" class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="login-password" required>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Login</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Register Form -->
+                        <div class="tab-pane fade" id="register" role="tabpanel" aria-labelledby="register-tab">
+                            <form id="register-form">
+                                <div class="mb-3">
+                                    <label for="register-username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="register-username" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="register-organization" class="form-label">Organization Name</label>
+                                    <input type="text" class="form-control" id="register-organization" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="register-password" class="form-label">Password</label>
+                                    <input type="password" class="form-control" id="register-password" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="register-password-confirm" class="form-label">Confirm Password</label>
+                                    <input type="password" class="form-control" id="register-password-confirm" required>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Register</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Right side - Hero Section -->
             <div class="col-md-6">
                 <div class="hero-section">
-                    <h2>Visitor Sign-In System</h2>
-                    <p class="lead">Efficiently manage visitor check-ins with our easy-to-use platform</p>
-                    
+                    <h2 class="mb-4">Welcome to the Visitor Sign-In System</h2>
+                    <p class="lead">A comprehensive solution for managing visitor registrations and tracking attendance for your events.</p>
                     <ul class="list-unstyled mt-4">
-                        <li class="mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle-fill me-2" viewBox="0 0 16 16">
-                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-                            </svg>
-                            Generate QR codes for easy visitor sign-in
-                        </li>
-                        <li class="mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle-fill me-2" viewBox="0 0 16 16">
-                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-                            </svg>
-                            View real-time event attendance data
-                        </li>
-                        <li class="mb-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle-fill me-2" viewBox="0 0 16 16">
-                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-                            </svg>
-                            Customize your branding and social media links
-                        </li>
+                        <li class="mb-2">✓ Seamless visitor check-in</li>
+                        <li class="mb-2">✓ Event management tools</li>
+                        <li class="mb-2">✓ QR code generation for quick sign-in</li>
+                        <li class="mb-2">✓ Real-time visitor tracking</li>
+                        <li class="mb-2">✓ Detailed reporting and analytics</li>
                     </ul>
                 </div>
             </div>
