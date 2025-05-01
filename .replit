@@ -13,20 +13,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "NextJS Frontend"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "Express Server"
-
-[[workflows.workflow]]
-name = "NextJS Frontend"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd next.js-frontend && npm install && npm run dev"
-waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Express Server"
