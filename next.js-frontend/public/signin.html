@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visitor Sign-In</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -68,10 +69,19 @@
                 </div>
                 <h2 id="event-title">Company Open House</h2>
                 <p class="text-muted" id="organization-name">Hosted by: Company Name</p>
+                <p class="text-muted" id="event-details">
+                    <span id="event-location"><i class="bi bi-geo-alt"></i> Location: Main Office</span>
+                    <span class="mx-2">•</span>
+                    <span id="event-date"><i class="bi bi-calendar-event"></i> Today</span>
+                </p>
             </div>
 
             <div class="alert alert-success mb-4" id="event-status">
                 <strong>Active Event:</strong> Please sign in below to register your attendance.
+            </div>
+            
+            <div class="mb-4" id="event-description">
+                Welcome to our event! Please sign in using the form below.
             </div>
             
             <form id="visitor-form">
@@ -130,8 +140,29 @@
                         </svg>
                     </div>
                     <h4 id="confirmation-name">Thank you for signing in!</h4>
-                    <p class="mb-0">Your registration has been recorded.</p>
-                    <p id="confirmation-time" class="text-muted">Sign-in time: 3:15 PM</p>
+                    <p class="mb-3">Your registration has been recorded successfully.</p>
+                    
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-calendar-event text-primary me-2"></i>
+                                <h6 class="mb-0" id="confirmation-event-title">Event Name</h6>
+                            </div>
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-geo-alt text-primary me-2"></i>
+                                <p class="mb-0" id="confirmation-event-location">Location</p>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-clock text-primary me-2"></i>
+                                <p class="mb-0" id="confirmation-time">Sign-in time: 3:15 PM</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p class="text-muted small">
+                        <i class="bi bi-envelope"></i> 
+                        <span id="notification-status">You will receive email notifications for this event.</span>
+                    </p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -187,9 +218,22 @@
                         const checkInTime = new Date(data.checkInTime);
                         const formattedTime = checkInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                         
+                        // Get the current event details
+                        const eventTitle = document.getElementById('event-title').textContent;
+                        const eventLocation = document.getElementById('event-location').textContent.replace('Location: ', '');
+                        
                         // Update confirmation modal
                         document.getElementById('confirmation-name').textContent = `Thank you, ${firstName}!`;
                         document.getElementById('confirmation-time').textContent = `Sign-in time: ${formattedTime}`;
+                        document.getElementById('confirmation-event-title').textContent = eventTitle;
+                        document.getElementById('confirmation-event-location').textContent = eventLocation;
+                        
+                        // Update notification status
+                        if (sendUpdates) {
+                            document.getElementById('notification-status').textContent = 'You will receive email notifications about this and future events.';
+                        } else {
+                            document.getElementById('notification-status').textContent = 'You have opted out of email notifications.';
+                        }
                         
                         // Show confirmation modal
                         const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
@@ -217,11 +261,27 @@
                     
                     // Update the page with event details
                     document.getElementById('event-title').textContent = eventDetails.title;
-                    document.getElementById('organization-name').textContent = `Hosted by: Organization`;
+                    document.getElementById('organization-name').textContent = `Hosted by: ${eventDetails.organizationName || 'Organization'}`;
                     
                     // Get organization initial (first letter)
                     const initial = eventDetails.title.charAt(0);
                     document.getElementById('organization-initial').textContent = initial;
+                    
+                    // Update event location and date
+                    document.getElementById('event-location').innerHTML = `<i class="bi bi-geo-alt"></i> Location: ${eventDetails.location || 'Main Office'}`;
+                    
+                    // Format the date
+                    const startDate = new Date(eventDetails.startDate || new Date());
+                    const formattedDate = startDate.toLocaleDateString(undefined, {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    document.getElementById('event-date').innerHTML = `<i class="bi bi-calendar-event"></i> ${formattedDate}`;
+                    
+                    // Update event description
+                    document.getElementById('event-description').textContent = eventDetails.description || 'Welcome to our event! Please sign in using the form below.';
                     
                     // Update event status
                     if (eventDetails.status !== 'enabled') {
