@@ -328,7 +328,8 @@ app.post('/api/events', async (req, res) => {
     
     res.status(201).json(formattedEvent);
   } catch (error) {
-    console.error('Error creating event:', error);
+    console.error('Error creating event:', error.message || error);
+    console.error('Error stack:', error.stack);
     
     // Fallback to in-memory if database error
     // Create new event in memory
