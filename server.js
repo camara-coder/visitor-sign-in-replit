@@ -7,6 +7,7 @@ const db = require('./database');
 const schema = require('./schema');
 const { promisify } = require('util');
 const bcrypt = require('bcryptjs') || { hashSync: (password) => password, compareSync: (password, hash) => password === hash };
+const emailService = require('./email-service');
 
 // Create express app
 const app = express();
@@ -534,6 +535,18 @@ app.post('/api/visitors', async (req, res) => {
       }
     }
     
+    // Get the event for email notifications
+    const event = eventResult.rows.length > 0 
+      ? {
+          id: eventResult.rows[0].id.toString(),
+          title: eventResult.rows[0].title,
+          description: eventResult.rows[0].description,
+          organizationId: eventResult.rows[0].organization_id.toString(),
+          status: eventResult.rows[0].status,
+          location: eventResult.rows[0].location
+        }
+      : inMemory.events.find(e => e.id === eventId);
+    
     // Insert new visitor into the database
     const result = await db.query(
       `INSERT INTO visitors 
@@ -561,6 +574,47 @@ app.post('/api/visitors', async (req, res) => {
     
     // Log for debugging
     console.log('New visitor checked in:', `${firstName} ${lastName}`);
+    
+    // Try to get the organization/host info
+    let hostUser;
+    try {
+      const userResult = await db.query('SELECT * FROM users WHERE id = $1', [event.organizationId]);
+      if (userResult.rows.length > 0) {
+        hostUser = {
+          id: userResult.rows[0].id.toString(),
+          username: userResult.rows[0].username,
+          email: userResult.rows[0].email || `${userResult.rows[0].username}@example.com`, // Fallback email
+          organizationName: userResult.rows[0].organization_name
+        };
+      }
+    } catch (err) {
+      console.error('Error fetching host user:', err);
+      // Fallback to a default admin user
+      hostUser = {
+        id: '1',
+        username: 'admin',
+        email: process.env.ADMIN_EMAIL || 'admin@example.com',
+        organizationName: 'Default Organization'
+      };
+    }
+    
+    // Send email notifications
+    try {
+      // Send welcome email to visitor if they opted in
+      if (sendUpdates) {
+        emailService.sendVisitorWelcomeEmail(formattedVisitor, event)
+          .catch(err => console.error('Failed to send welcome email:', err));
+      }
+      
+      // Send notification to host/admin
+      if (hostUser) {
+        emailService.sendVisitorNotification(hostUser, formattedVisitor, event)
+          .catch(err => console.error('Failed to send host notification email:', err));
+      }
+    } catch (err) {
+      console.error('Error sending email notifications:', err);
+      // Continue anyway, email notifications are not critical
+    }
     
     res.status(201).json(formattedVisitor);
   } catch (error) {
@@ -592,6 +646,30 @@ app.post('/api/visitors', async (req, res) => {
     
     // Log for debugging
     console.log('New visitor checked in (in-memory):', `${firstName} ${lastName}`);
+    
+    // Try to send email notifications
+    try {
+      // Default admin user
+      const hostUser = {
+        id: '1',
+        username: 'admin',
+        email: process.env.ADMIN_EMAIL || 'admin@example.com',
+        organizationName: 'Default Organization'
+      };
+      
+      // Send welcome email to visitor if they opted in
+      if (sendUpdates) {
+        emailService.sendVisitorWelcomeEmail(newVisitor, event)
+          .catch(err => console.error('Failed to send welcome email:', err));
+      }
+      
+      // Send notification to host/admin
+      emailService.sendVisitorNotification(hostUser, newVisitor, event)
+        .catch(err => console.error('Failed to send host notification email:', err));
+    } catch (err) {
+      console.error('Error sending email notifications:', err);
+      // Continue anyway, email notifications are not critical
+    }
     
     res.status(201).json(newVisitor);
   }
@@ -653,6 +731,16 @@ app.get('/signin', (req, res) => {
     res.sendFile(signinPath);
   } else {
     res.redirect('/');
+  }
+});
+
+// Send analytics.html for /analytics path
+app.get('/analytics', (req, res) => {
+  const analyticsPath = path.join(__dirname, 'next.js-frontend/public/analytics.html');
+  if (fs.existsSync(analyticsPath)) {
+    res.sendFile(analyticsPath);
+  } else {
+    res.redirect('/dashboard');
   }
 });
 
