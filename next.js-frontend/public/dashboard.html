@@ -275,8 +275,48 @@
                 </div>
             </div>
 
+            <!-- Event Management Section -->
+            <div class="card mb-4" id="event-management">
+                <div class="card-header">
+                    <h5 class="mb-0">Event Management</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Active Event</h6>
+                            <div id="active-event-info">
+                                <p class="text-muted">No active event. Create a new event to start collecting visitor registrations.</p>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-success" id="event-action-btn">Create New Event</button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Past Events</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm" id="past-events-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="4" class="text-center">No past events</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- QR Code Generator -->
-            <div class="card">
+            <div class="card" id="qr-code">
                 <div class="card-header">
                     <h5 class="mb-0">Event QR Code</h5>
                 </div>
@@ -403,8 +443,11 @@
         function updateEventPanel() {
             const statusPanel = document.getElementById('status-panel');
             const toggleBtn = document.getElementById('toggle-event-btn');
+            const eventActionBtn = document.getElementById('event-action-btn');
+            const activeEventInfo = document.getElementById('active-event-info');
             
             if (currentEvent) {
+                // Update main status panel
                 statusPanel.classList.remove('alert-warning', 'alert-danger');
                 statusPanel.classList.add('alert-success');
                 statusPanel.innerHTML = `<strong>Active Event:</strong> <span id="event-name">${currentEvent.title}</span>`;
@@ -412,7 +455,26 @@
                 toggleBtn.textContent = 'Disable Event';
                 toggleBtn.classList.remove('btn-outline-danger');
                 toggleBtn.classList.add('btn-outline-success');
+                
+                // Update event management section
+                activeEventInfo.innerHTML = `
+                    <div class="card border-success mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">${currentEvent.title}</h5>
+                            <p class="card-text">${currentEvent.description || 'No description provided'}</p>
+                            <p class="mb-1"><strong>Location:</strong> ${currentEvent.location || 'N/A'}</p>
+                            <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">Active</span></p>
+                            <p class="mb-1"><strong>Start Date:</strong> ${new Date(currentEvent.startDate).toLocaleString()}</p>
+                            <p class="mb-0"><strong>End Date:</strong> ${new Date(currentEvent.endDate).toLocaleString()}</p>
+                        </div>
+                    </div>
+                `;
+                
+                eventActionBtn.textContent = 'Disable Event';
+                eventActionBtn.classList.remove('btn-success');
+                eventActionBtn.classList.add('btn-danger');
             } else {
+                // Update main status panel
                 statusPanel.classList.remove('alert-success', 'alert-danger');
                 statusPanel.classList.add('alert-warning');
                 statusPanel.innerHTML = '<strong>No Active Event:</strong> Enable an event to start collecting visitor registrations.';
@@ -420,6 +482,15 @@
                 toggleBtn.textContent = 'Create New Event';
                 toggleBtn.classList.remove('btn-outline-success');
                 toggleBtn.classList.add('btn-outline-primary');
+                
+                // Update event management section
+                activeEventInfo.innerHTML = `
+                    <p class="text-muted">No active event. Create a new event to start collecting visitor registrations.</p>
+                `;
+                
+                eventActionBtn.textContent = 'Create New Event';
+                eventActionBtn.classList.remove('btn-danger');
+                eventActionBtn.classList.add('btn-success');
             }
         }
         
@@ -468,7 +539,12 @@
         
         // Set up event handlers
         function setupEventHandlers(userId) {
-            // Event toggle button
+            // Event management action button
+            document.getElementById('event-action-btn').addEventListener('click', async function() {
+                handleEventAction(userId);
+            });
+            
+            // Main dashboard event toggle button
             document.getElementById('toggle-event-btn').addEventListener('click', async function() {
                 const btn = this;
                 
@@ -563,6 +639,82 @@
                     alert('QR code not available');
                 }
             });
+        }
+        
+        // Handle event action (create or disable)
+        async function handleEventAction(userId) {
+            if (currentEvent) {
+                // Disable the current event
+                try {
+                    const confirmDisable = confirm(`Are you sure you want to disable the event "${currentEvent.title}"?`);
+                    if (!confirmDisable) return;
+                    
+                    const response = await fetch(`/api/events/${currentEvent.id}/disable`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        currentEvent = null;
+                        updateEventPanel();
+                        
+                        // Show confirmation to user
+                        alert('Event disabled successfully');
+                        
+                        // Reload dashboard data
+                        loadDashboardData(userId);
+                    } else {
+                        const error = await response.json();
+                        alert(`Failed to disable event: ${error.message || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error disabling event:', error);
+                    alert('An error occurred while disabling the event');
+                }
+            } else {
+                // Create a new event with a form dialog
+                const eventTitle = prompt('Enter event title:');
+                if (!eventTitle) return;
+                
+                const eventDesc = prompt('Enter event description (optional):');
+                const eventLocation = prompt('Enter event location (optional):') || 'Main Office';
+                
+                try {
+                    const response = await fetch('/api/events', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            title: eventTitle,
+                            description: eventDesc || `Event created on ${new Date().toLocaleDateString()}`,
+                            location: eventLocation,
+                            userId: userId
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        currentEvent = await response.json();
+                        
+                        // Show success message
+                        alert(`Event "${currentEvent.title}" created successfully`);
+                        
+                        // Update UI elements
+                        updateEventPanel();
+                        
+                        // Reload dashboard data to update events count and update QR code
+                        loadDashboardData(userId);
+                    } else {
+                        const errorData = await response.json().catch(() => ({}));
+                        alert(`Failed to create event: ${errorData.message || 'Server error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error creating event:', error);
+                    alert('An error occurred while creating the event');
+                }
+            }
         }
     </script>
 </body>
