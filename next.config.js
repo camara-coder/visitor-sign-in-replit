@@ -2,24 +2,21 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  env: {
-    API_ENDPOINT: process.env.API_ENDPOINT || 'http://localhost:8000',
+  images: {
+    domains: ['localhost'],
   },
   async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.API_ENDPOINT || 'http://localhost:8000'}/:path*`,
+        destination: process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:8000/api/:path*' 
+          : '/api/:path*',
       },
     ];
   },
-  serverRuntimeConfig: {
-    // Will only be available on the server side
-    apiEndpoint: process.env.API_ENDPOINT || 'http://localhost:8000',
-  },
-  publicRuntimeConfig: {
-    // Will be available on both server and client
-    staticFolder: '/static',
+  env: {
+    API_URL: process.env.API_URL || 'http://localhost:8000',
   },
 };
 
