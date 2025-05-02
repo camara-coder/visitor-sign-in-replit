@@ -8,6 +8,8 @@ Before you begin, ensure you have:
 
 1. An AWS account with appropriate permissions
 2. AWS CLI installed and configured with your credentials
+   - Standard IAM credentials via `aws configure`
+   - OR AWS SSO credentials configured via `aws configure sso`
 3. The latest code from the repository
 
 ## Deployment Options
@@ -139,6 +141,40 @@ The following environment variables are configured:
 3. **Application Errors**
    - Check Elastic Beanstalk logs
    - Verify environment variables
+
+## AWS SSO Authentication
+
+If you're using AWS SSO for authentication, we provide special wrapper scripts that handle the SSO login process:
+
+```bash
+cd scripts
+
+# For CodePipeline setup:
+./run-setup-codepipeline.sh
+
+# For IAM policies setup:
+./run-setup-iam-policies.sh
+
+# For scheduled events setup:
+./run-setup-scheduled-events.sh
+
+# For monitoring resources setup:
+./run-setup-monitoring.sh
+
+# For complete deployment (all steps):
+./run-deploy-complete.sh
+```
+
+These wrapper scripts will:
+1. Check if you have valid AWS credentials
+2. If not, prompt you to select an SSO profile and authenticate
+3. Once authenticated, run the actual deployment script
+
+You can also run the AWS SSO login script directly:
+
+```bash
+./aws-sso-login.sh [profile-name]
+```
 
 ### Support
 

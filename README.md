@@ -55,7 +55,61 @@ A comprehensive full-stack web application for visitor registration and event ma
 
 The application includes scripts and configuration for multiple AWS deployment options.
 
-#### Option 1: Elastic Beanstalk Deployment
+#### AWS Authentication Support
+
+Our deployment scripts support two authentication methods:
+
+1. **Standard AWS Credentials**: Traditional access key and secret key configured with `aws configure`
+2. **AWS SSO (Single Sign-On)**: Modern authentication method using `aws configure sso`
+
+The deployment scripts automatically detect and handle both authentication methods. Special wrapper scripts with `run-` prefix provide seamless SSO authentication support.
+
+#### Option 1: AWS CodePipeline Deployment (Recommended)
+
+This option sets up a complete CI/CD pipeline using AWS CodePipeline, CodeCommit, and CodeBuild.
+
+##### Prerequisites
+
+- AWS Account with appropriate permissions
+- AWS CLI installed and configured (standard credentials or SSO)
+- Git installed locally
+
+##### Deployment Steps
+
+1. Run the CodePipeline setup script:
+   ```bash
+   cd scripts
+   
+   # If using AWS SSO:
+   ./run-setup-codepipeline.sh
+   
+   # If using standard AWS credentials:
+   ./setup-codepipeline.sh
+   ```
+
+2. Run the one-click complete deployment:
+   ```bash
+   # If using AWS SSO:
+   ./run-deploy-complete.sh
+   
+   # If using standard AWS credentials:
+   ./deploy-complete.sh
+   ```
+   
+   This will:
+   - Set up IAM roles and policies
+   - Create an S3 bucket for artifacts
+   - Deploy the CloudFormation stack for CodePipeline
+   - Set up scheduled events infrastructure
+   - Configure monitoring and alarms
+
+3. Monitor the pipeline in the AWS Console
+
+For detailed CodePipeline deployment instructions, see the [deployment guide](deploy/DEPLOYMENT_GUIDE.md).
+
+#### Option 2: Elastic Beanstalk Direct Deployment
+
+For a more manual approach, you can deploy directly to Elastic Beanstalk.
 
 ##### Prerequisites
 
@@ -65,46 +119,7 @@ The application includes scripts and configuration for multiple AWS deployment o
 
 ##### Deployment Steps
 
-1. Setup AWS Parameters:
-   ```
-   ./scripts/setup-aws-params.sh
-   ```
-   This will securely store database passwords, secrets, and other configuration in AWS Parameter Store.
-
-2. Deploy the application:
-   ```
-   ./scripts/aws-deploy.sh
-   ```
-   This script will package and deploy the application to AWS Elastic Beanstalk.
-
-For detailed Elastic Beanstalk deployment instructions, see the [deployment guide](deploy/README.md).
-
-#### Option 2: AWS CodePipeline Deployment
-
-This option sets up a complete CI/CD pipeline using AWS CodePipeline, CodeCommit, and CodeBuild.
-
-##### Prerequisites
-
-- AWS Account with appropriate permissions
-- AWS CLI installed and configured
-- Git installed locally
-
-##### Deployment Steps
-
-1. Run the all-in-one deployment script:
-   ```
-   cd scripts
-   ./deploy-with-codepipeline.sh
-   ```
-   This script will:
-   - Set up IAM roles and policies
-   - Create an S3 bucket for artifacts
-   - Deploy the CloudFormation stack for CodePipeline
-   - Optionally clone and push code to CodeCommit
-
-2. Monitor the pipeline in the AWS Console
-
-For step-by-step CodePipeline deployment instructions, see the [CodePipeline deployment guide](deploy/CODEPIPELINE_DEPLOYMENT_STEPS.md).
+See the [deployment guide](deploy/DEPLOYMENT_GUIDE.md) for detailed Elastic Beanstalk deployment instructions.
 
 ### Default Access
 
