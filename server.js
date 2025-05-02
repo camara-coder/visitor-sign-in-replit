@@ -1012,7 +1012,7 @@ app.get('/api/directory/:id', async (req, res) => {
 });
 
 app.post('/api/directory', async (req, res) => {
-  const { firstName, lastName, phone, address, dateOfBirth } = req.body;
+  const { firstName, lastName, phone, address, dateOfBirth, email } = req.body;
   
   // Validate required fields
   if (!firstName || !lastName || !phone) {
@@ -1037,10 +1037,10 @@ app.post('/api/directory', async (req, res) => {
     // Insert new entry into the database
     const result = await db.query(
       `INSERT INTO visitor_directory 
-       (first_name, last_name, phone, address, date_of_birth, created_at, updated_at) 
-       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
+       (first_name, last_name, phone, email, address, date_of_birth, created_at, updated_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
        RETURNING *`,
-      [firstName, lastName, phone, address || '', dateOfBirth || null]
+      [firstName, lastName, phone, email || null, address || '', dateOfBirth || null]
     );
     
     const newEntry = result.rows[0];
@@ -1051,6 +1051,7 @@ app.post('/api/directory', async (req, res) => {
       firstName: newEntry.first_name,
       lastName: newEntry.last_name,
       phone: newEntry.phone,
+      email: newEntry.email,
       address: newEntry.address,
       dateOfBirth: newEntry.date_of_birth ? new Date(newEntry.date_of_birth).toISOString().split('T')[0] : null,
       createdAt: newEntry.created_at,
