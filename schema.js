@@ -61,6 +61,54 @@ async function setupDatabase() {
       )
     `);
     
+    // Create scheduled events table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS scheduled_events (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        description TEXT,
+        location VARCHAR(100),
+        start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+        end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+        created_by INTEGER REFERENCES users(id),
+        updated_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        status VARCHAR(20) DEFAULT 'active',
+        is_recurring BOOLEAN DEFAULT FALSE,
+        recurrence_type VARCHAR(20),
+        recurrence_interval INTEGER,
+        recurrence_days INTEGER[],
+        recurrence_end_date TIMESTAMP WITH TIME ZONE
+      )
+    `);
+    
+    // Create scheduled event instances table (for recurring events)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS scheduled_event_instances (
+        id SERIAL PRIMARY KEY,
+        scheduled_event_id INTEGER REFERENCES scheduled_events(id) ON DELETE CASCADE,
+        start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+        end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+        status VARCHAR(20) DEFAULT 'scheduled',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Create event registrations table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS event_registrations (
+        id SERIAL PRIMARY KEY,
+        visitor_id INTEGER REFERENCES visitor_directory(id) ON DELETE CASCADE,
+        event_instance_id INTEGER REFERENCES scheduled_event_instances(id) ON DELETE CASCADE,
+        registration_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        status VARCHAR(20) DEFAULT 'registered',
+        notes TEXT,
+        UNIQUE(visitor_id, event_instance_id)
+      )
+    `);
+    
     console.log('Database schema setup completed successfully');
     
     // Check if default admin user exists, if not create one

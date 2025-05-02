@@ -8,6 +8,7 @@ const schema = require('./schema');
 const { promisify } = require('util');
 const bcrypt = require('bcryptjs') || { hashSync: (password) => password, compareSync: (password, hash) => password === hash };
 const emailService = require('./email-service');
+const scheduledEventsApi = require('./scheduled-events-api');
 
 // Create express app
 const app = express();
@@ -1321,6 +1322,19 @@ app.get('/directory', (req, res) => {
   const directoryPath = path.join(__dirname, 'next.js-frontend/public/directory.html');
   if (fs.existsSync(directoryPath)) {
     res.sendFile(directoryPath);
+  } else {
+    res.redirect('/dashboard');
+  }
+});
+
+// Register the scheduled events API routes
+app.use('/api/scheduled-events', scheduledEventsApi);
+
+// Add a redirect from /schedule to the scheduling page
+app.get('/schedule', (req, res) => {
+  const schedulePath = path.join(__dirname, 'next.js-frontend/public/schedule.html');
+  if (fs.existsSync(schedulePath)) {
+    res.sendFile(schedulePath);
   } else {
     res.redirect('/dashboard');
   }

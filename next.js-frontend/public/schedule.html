@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Scheduler | Visitor Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        .sidebar {
+            min-height: calc(100vh - 56px);
+            background-color: #343a40;
+            color: white;
+        }
+        .sidebar a {
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            padding: 10px 15px;
+            display: block;
+            transition: all 0.2s;
+        }
+        .sidebar a:hover, .sidebar a.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .sidebar a i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+            font-weight: 600;
+        }
+        .table th {
+            font-weight: 600;
+            background-color: #f8f9fa;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0069d9;
+            border-color: #0062cc;
+        }
+        .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+        .badge {
+            font-weight: 500;
+            padding: 0.5em 0.75em;
+        }
+        .badge-active {
+            background-color: #28a745;
+        }
+        .badge-scheduled {
+            background-color: #17a2b8;
+        }
+        .badge-completed {
+            background-color: #6c757d;
+        }
+        .badge-cancelled {
+            background-color: #dc3545;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+        .day-checkbox {
+            margin-right: 10px;
+        }
+        .recurrence-options {
+            display: none;
+        }
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        .card-title {
+            margin-bottom: 0;
+        }
+        #event-tabs {
+            margin-bottom: 1rem;
+        }
+        .event-instance {
+            margin-bottom: 0.5rem;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        .instance-date {
+            font-weight: 600;
+        }
+        .instance-badge {
+            float: right;
+        }
+        .event-card {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .event-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+        .visitor-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-calendar-check me-2"></i>
+                Visitor Management
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <span class="nav-link" id="user-info">Welcome</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-2 col-md-3 p-0 sidebar">
+                <div class="d-flex flex-column">
+                    <a href="/dashboard" class="py-3">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <a href="/schedule" class="py-3 active">
+                        <i class="fas fa-calendar-alt"></i> Event Scheduler
+                    </a>
+                    <a href="/directory" class="py-3">
+                        <i class="fas fa-address-book"></i> Visitor Directory
+                    </a>
+                    <a href="/analytics" class="py-3">
+                        <i class="fas fa-chart-bar"></i> Analytics
+                    </a>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-10 col-md-9 p-4">
+                <div class="container">
+                    <h2 class="mb-4">Event Scheduler</h2>
+
+                    <!-- Event Management Tabs -->
+                    <ul class="nav nav-tabs" id="event-tabs">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="events-tab" data-bs-toggle="tab" href="#events-content">My Events</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="create-tab" data-bs-toggle="tab" href="#create-content">Create Event</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="registrations-tab" data-bs-toggle="tab" href="#registrations-content">Registrations</a>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content">
+                        <!-- Events List Tab -->
+                        <div class="tab-pane fade show active" id="events-content">
+                            <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
+                                <h4>My Events</h4>
+                                <button class="btn btn-primary" id="create-event-btn">
+                                    <i class="fas fa-plus"></i> Create New Event
+                                </button>
+                            </div>
+
+                            <div class="row" id="events-list">
+                                <!-- Events will be loaded here -->
+                                <div class="col-12 text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Create Event Tab -->
+                        <div class="tab-pane fade" id="create-content">
+                            <div class="card mt-3">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-calendar-plus me-2"></i>
+                                        <span id="form-title">Create New Event</span>
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="event-form">
+                                        <input type="hidden" id="event-id">
+                                        
+                                        <div class="mb-3">
+                                            <label for="event-name" class="form-label">Event Name *</label>
+                                            <input type="text" class="form-control" id="event-name" required>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="event-description" class="form-label">Description</label>
+                                            <textarea class="form-control" id="event-description" rows="3"></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="event-location" class="form-label">Location</label>
+                                            <input type="text" class="form-control" id="event-location">
+                                        </div>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="event-start-date" class="form-label">Start Date and Time *</label>
+                                                <input type="text" class="form-control" id="event-start-date" required>
+                                            </div>
+                                            
+                                            <div class="col-md-6 mb-3">
+                                                <label for="event-end-date" class="form-label">End Date and Time *</label>
+                                                <input type="text" class="form-control" id="event-end-date" required>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="is-recurring">
+                                                <label class="form-check-label" for="is-recurring">
+                                                    This is a recurring event
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div id="recurrence-options" class="recurrence-options">
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <label for="recurrence-type" class="form-label">Recurrence Type</label>
+                                                    <select class="form-select" id="recurrence-type">
+                                                        <option value="daily">Daily</option>
+                                                        <option value="weekly">Weekly</option>
+                                                        <option value="monthly">Monthly</option>
+                                                        <option value="yearly">Yearly</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div class="col-md-6">
+                                                    <label for="recurrence-interval" class="form-label">Repeat Every</label>
+                                                    <div class="input-group">
+                                                        <input type="number" class="form-control" id="recurrence-interval" min="1" value="1">
+                                                        <span class="input-group-text" id="interval-label">day(s)</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3" id="weekly-options" style="display: none;">
+                                                <label class="form-label">Repeat On</label>
+                                                <div class="d-flex flex-wrap">
+                                                    <div class="form-check day-checkbox">
+                                                        <input class="form-check-input" type="checkbox" value="0" id="day-0">
+                                                        <label class="form-check-label" for="day-0">Sun</label>
+                                                    </div>
+                                                    <div class="form-check day-checkbox">
+                                                        <input class="form-check-input" type="checkbox" value="1" id="day-1">
+                                                        <label class="form-check-label" for="day-1">Mon</label>
+                                                    </div>
+                                                    <div class="form-check day-checkbox">
+                                                        <input class="form-check-input" type="checkbox" value="2" id="day-2">
+                                                        <label class="form-check-label" for="day-2">Tue</label>
+                                                    </div>
+                                                    <div class="form-check day-checkbox">
+                                                        <input class="form-check-input" type="checkbox" value="3" id="day-3">
+                                                        <label class="form-check-label" for="day-3">Wed</label>
+                                                    </div>
+                                                    <div class="form-check day-checkbox">
+                                                        <input class="form-check-input" type="checkbox" value="4" id="day-4">
+                                                        <label class="form-check-label" for="day-4">Thu</label>
+                                                    </div>
+                                                    <div class="form-check day-checkbox">
+                                                        <input class="form-check-input" type="checkbox" value="5" id="day-5">
+                                                        <label class="form-check-label" for="day-5">Fri</label>
+                                                    </div>
+                                                    <div class="form-check day-checkbox">
+                                                        <input class="form-check-input" type="checkbox" value="6" id="day-6">
+                                                        <label class="form-check-label" for="day-6">Sat</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="recurrence-end-date" class="form-label">End Recurrence</label>
+                                                <input type="text" class="form-control" id="recurrence-end-date" placeholder="No end date">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                            <button type="button" class="btn btn-secondary me-md-2" id="cancel-event-btn">Cancel</button>
+                                            <button type="submit" class="btn btn-primary" id="save-event-btn">Create Event</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Registrations Tab -->
+                        <div class="tab-pane fade" id="registrations-content">
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h5 class="card-title">
+                                        <i class="fas fa-users me-2"></i>
+                                        Event Registrations
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="select-event" class="form-label">Select Event</label>
+                                        <select class="form-select" id="select-event">
+                                            <option value="">-- Select an event --</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div id="event-instances" class="mb-3" style="display: none;">
+                                        <label for="select-instance" class="form-label">Select Instance</label>
+                                        <select class="form-select" id="select-instance">
+                                            <option value="">-- Select an event instance --</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div id="registrations-list" style="display: none;">
+                                        <h5 class="mb-3">Registered Visitors</h5>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Name</th>
+                                                        <th>Phone</th>
+                                                        <th>Email</th>
+                                                        <th>Registration Date</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="registrations-table-body">
+                                                    <!-- Registrations will be loaded here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <div id="no-registrations" class="alert alert-info" style="display: none;">
+                                            No registrations found for this event instance.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div class="modal fade" id="eventDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-event-title">Event Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Location:</strong> <span id="modal-event-location">-</span></p>
+                            <p><strong>Status:</strong> <span id="modal-event-status">-</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Created:</strong> <span id="modal-event-created">-</span></p>
+                            <p><strong>Last Updated:</strong> <span id="modal-event-updated">-</span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Description</h6>
+                        <p id="modal-event-description">No description provided.</p>
+                    </div>
+                    
+                    <div class="mb-3" id="modal-recurrence-info">
+                        <h6>Recurrence</h6>
+                        <p id="modal-event-recurrence">This is a non-recurring event.</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Event Instances</h6>
+                        <div id="modal-event-instances">
+                            <!-- Event instances will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="edit-event-btn">Edit Event</button>
+                    <button type="button" class="btn btn-danger" id="delete-event-btn">Delete Event</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmation-title">Confirm Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="confirmation-message">
+                    Are you sure you want to perform this action?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-action-btn">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Toast -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="alertToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto" id="toast-title">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toast-message">
+                <!-- Toast message will be set dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        // Global variables
+        let currentUser = null;
+        let currentEvent = null;
+        let userEvents = [];
+
+        // DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is logged in
+            const userData = localStorage.getItem('userData');
+            if (!userData) {
+                // Redirect to login if not logged in
+                window.location.href = '/';
+                return;
+            }
+            
+            try {
+                currentUser = JSON.parse(userData);
+                // Update user info in the header
+                document.getElementById('user-info').textContent = `Welcome, ${currentUser.username}`;
+                
+                // Setup logout button
+                document.getElementById('logout-btn').addEventListener('click', function() {
+                    localStorage.removeItem('userData');
+                    window.location.href = '/';
+                });
+                
+                // Initialize date pickers
+                initializeDatePickers();
+                
+                // Initialize recurrence UI behavior
+                initializeRecurrenceUI();
+                
+                // Initialize event handlers
+                setupEventHandlers();
+                
+                // Load user events
+                loadUserEvents();
+                
+            } catch (e) {
+                console.error('Error parsing user data', e);
+                localStorage.removeItem('userData');
+                window.location.href = '/';
+            }
+        });
+
+        // Initialize date pickers
+        function initializeDatePickers() {
+            // Initialize start date picker
+            flatpickr("#event-start-date", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                minDate: "today",
+                time_24hr: false
+            });
+            
+            // Initialize end date picker
+            flatpickr("#event-end-date", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                minDate: "today",
+                time_24hr: false
+            });
+            
+            // Initialize recurrence end date picker
+            flatpickr("#recurrence-end-date", {
+                enableTime: false,
+                dateFormat: "Y-m-d",
+                minDate: "today"
+            });
+        }
+
+        // Initialize recurrence UI behavior
+        function initializeRecurrenceUI() {
+            // Show/hide recurrence options based on checkbox
+            document.getElementById('is-recurring').addEventListener('change', function() {
+                const recurrenceOptions = document.getElementById('recurrence-options');
+                if (this.checked) {
+                    recurrenceOptions.style.display = 'block';
+                } else {
+                    recurrenceOptions.style.display = 'none';
+                }
+            });
+            
+            // Update interval label based on recurrence type
+            document.getElementById('recurrence-type').addEventListener('change', function() {
+                const intervalLabel = document.getElementById('interval-label');
+                const weeklyOptions = document.getElementById('weekly-options');
+                
+                switch (this.value) {
+                    case 'daily':
+                        intervalLabel.textContent = 'day(s)';
+                        weeklyOptions.style.display = 'none';
+                        break;
+                    case 'weekly':
+                        intervalLabel.textContent = 'week(s)';
+                        weeklyOptions.style.display = 'block';
+                        break;
+                    case 'monthly':
+                        intervalLabel.textContent = 'month(s)';
+                        weeklyOptions.style.display = 'none';
+                        break;
+                    case 'yearly':
+                        intervalLabel.textContent = 'year(s)';
+                        weeklyOptions.style.display = 'none';
+                        break;
+                }
+            });
+        }
+
+        // Setup event handlers
+        function setupEventHandlers() {
+            // Create event button
+            document.getElementById('create-event-btn').addEventListener('click', function() {
+                // Switch to the create tab
+                const createTab = document.getElementById('create-tab');
+                bootstrap.Tab.getOrCreateInstance(createTab).show();
+                
+                // Reset the form
+                resetEventForm();
+            });
+            
+            // Cancel event button
+            document.getElementById('cancel-event-btn').addEventListener('click', function() {
+                // Switch back to events tab
+                const eventsTab = document.getElementById('events-tab');
+                bootstrap.Tab.getOrCreateInstance(eventsTab).show();
+            });
+            
+            // Event form submission
+            document.getElementById('event-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveEvent();
+            });
+            
+            // Edit event button in modal
+            document.getElementById('edit-event-btn').addEventListener('click', function() {
+                if (currentEvent) {
+                    populateEventForm(currentEvent);
+                    
+                    // Close the modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('eventDetailsModal'));
+                    modal.hide();
+                    
+                    // Switch to the create tab
+                    const createTab = document.getElementById('create-tab');
+                    bootstrap.Tab.getOrCreateInstance(createTab).show();
+                }
+            });
+            
+            // Delete event button in modal
+            document.getElementById('delete-event-btn').addEventListener('click', function() {
+                if (currentEvent) {
+                    // Show confirmation modal
+                    document.getElementById('confirmation-title').textContent = 'Delete Event';
+                    document.getElementById('confirmation-message').textContent = 
+                        `Are you sure you want to delete the event "${currentEvent.name}"? This action cannot be undone.`;
+                    
+                    // Set up confirm button
+                    const confirmButton = document.getElementById('confirm-action-btn');
+                    confirmButton.onclick = function() {
+                        deleteEvent(currentEvent.id);
+                        
+                        // Close both modals
+                        bootstrap.Modal.getInstance(document.getElementById('confirmationModal')).hide();
+                        bootstrap.Modal.getInstance(document.getElementById('eventDetailsModal')).hide();
+                    };
+                    
+                    // Show confirmation modal
+                    const confirmModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+                    confirmModal.show();
+                }
+            });
+            
+            // Event select for registrations
+            document.getElementById('select-event').addEventListener('change', function() {
+                const eventId = this.value;
+                if (eventId) {
+                    loadEventInstances(eventId);
+                } else {
+                    document.getElementById('event-instances').style.display = 'none';
+                    document.getElementById('registrations-list').style.display = 'none';
+                }
+            });
+            
+            // Instance select for registrations
+            document.getElementById('select-instance').addEventListener('change', function() {
+                const instanceId = this.value;
+                if (instanceId) {
+                    loadRegistrations(instanceId);
+                } else {
+                    document.getElementById('registrations-list').style.display = 'none';
+                }
+            });
+        }
+
+        // Load user events
+        async function loadUserEvents() {
+            showLoading();
+            
+            try {
+                const response = await fetch(`/api/scheduled-events?userId=${currentUser.id}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch events');
+                }
+                
+                userEvents = await response.json();
+                
+                // Display events
+                displayEvents(userEvents);
+                
+                // Populate event select for registrations
+                populateEventSelect(userEvents);
+                
+            } catch (error) {
+                console.error('Error loading events:', error);
+                showAlert(error.message || 'Failed to load events. Please try again.', 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Display events in the events list
+        function displayEvents(events) {
+            const eventsListContainer = document.getElementById('events-list');
+            
+            if (events.length === 0) {
+                eventsListContainer.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <p class="text-muted">No events found. Create your first event to get started.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            events.forEach(event => {
+                const startDate = new Date(event.startDate);
+                const endDate = new Date(event.endDate);
+                
+                const formattedStartDate = formatDateTime(startDate);
+                const formattedEndDate = formatDateTime(endDate);
+                
+                html += `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card event-card h-100" data-event-id="${event.id}">
+                            <div class="card-body">
+                                <h5 class="card-title">${event.name}</h5>
+                                <div class="mb-2">
+                                    <span class="badge ${event.status === 'active' ? 'bg-success' : 'bg-secondary'}">${event.status}</span>
+                                    ${event.isRecurring ? '<span class="badge bg-info ms-1">Recurring</span>' : ''}
+                                </div>
+                                <p class="card-text text-muted">
+                                    <i class="fas fa-map-marker-alt me-2"></i>${event.location || 'No location specified'}
+                                </p>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="far fa-calendar-alt me-2"></i>${formattedStartDate}
+                                    </small>
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent border-top-0">
+                                <button class="btn btn-sm btn-outline-primary view-event-btn">
+                                    <i class="fas fa-eye me-1"></i> View Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            eventsListContainer.innerHTML = html;
+            
+            // Add event listeners to view buttons
+            document.querySelectorAll('.view-event-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const eventId = this.closest('.event-card').dataset.eventId;
+                    viewEventDetails(eventId);
+                });
+            });
+            
+            // Add event listeners to cards
+            document.querySelectorAll('.event-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const eventId = this.dataset.eventId;
+                    viewEventDetails(eventId);
+                });
+            });
+        }
+
+        // View event details
+        async function viewEventDetails(eventId) {
+            showLoading();
+            
+            try {
+                const response = await fetch(`/api/scheduled-events/${eventId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch event details');
+                }
+                
+                const event = await response.json();
+                currentEvent = event;
+                
+                // Populate modal with event details
+                document.getElementById('modal-event-title').textContent = event.name;
+                document.getElementById('modal-event-location').textContent = event.location || 'No location specified';
+                document.getElementById('modal-event-status').innerHTML = 
+                    `<span class="badge ${event.status === 'active' ? 'bg-success' : 'bg-secondary'}">${event.status}</span>`;
+                document.getElementById('modal-event-description').textContent = event.description || 'No description provided.';
+                document.getElementById('modal-event-created').textContent = formatDateTime(new Date(event.createdAt));
+                document.getElementById('modal-event-updated').textContent = formatDateTime(new Date(event.updatedAt));
+                
+                // Recurrence info
+                if (event.isRecurring) {
+                    let recurrenceText = `Repeats ${event.recurrenceType}`;
+                    
+                    if (event.recurrenceInterval > 1) {
+                        recurrenceText += ` every ${event.recurrenceInterval} `;
+                        
+                        switch (event.recurrenceType) {
+                            case 'daily': recurrenceText += 'days'; break;
+                            case 'weekly': recurrenceText += 'weeks'; break;
+                            case 'monthly': recurrenceText += 'months'; break;
+                            case 'yearly': recurrenceText += 'years'; break;
+                        }
+                    }
+                    
+                    if (event.recurrenceType === 'weekly' && event.recurrenceDays && event.recurrenceDays.length > 0) {
+                        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        const selectedDays = event.recurrenceDays.map(day => daysOfWeek[day]);
+                        recurrenceText += ` on ${selectedDays.join(', ')}`;
+                    }
+                    
+                    if (event.recurrenceEndDate) {
+                        recurrenceText += ` until ${formatDate(new Date(event.recurrenceEndDate))}`;
+                    }
+                    
+                    document.getElementById('modal-event-recurrence').textContent = recurrenceText;
+                    document.getElementById('modal-recurrence-info').style.display = 'block';
+                } else {
+                    document.getElementById('modal-event-recurrence').textContent = 'This is a non-recurring event.';
+                    document.getElementById('modal-recurrence-info').style.display = 'block';
+                }
+                
+                // Event instances
+                displayEventInstances(event.instances || []);
+                
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('eventDetailsModal'));
+                modal.show();
+                
+            } catch (error) {
+                console.error('Error fetching event details:', error);
+                showAlert(error.message || 'Failed to load event details. Please try again.', 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Display event instances in the modal
+        function displayEventInstances(instances) {
+            const instancesContainer = document.getElementById('modal-event-instances');
+            
+            if (instances.length === 0) {
+                instancesContainer.innerHTML = '<p class="text-muted">No instances found for this event.</p>';
+                return;
+            }
+            
+            let html = '';
+            
+            // Sort instances by start date
+            instances.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+            
+            instances.forEach(instance => {
+                const startDate = new Date(instance.startDate);
+                const endDate = new Date(instance.endDate);
+                
+                const formattedStartDate = formatDateTime(startDate);
+                const formattedEndDate = formatTime(endDate);
+                
+                let statusClass = 'bg-secondary';
+                switch (instance.status) {
+                    case 'scheduled': statusClass = 'bg-info'; break;
+                    case 'in-progress': statusClass = 'bg-primary'; break;
+                    case 'completed': statusClass = 'bg-success'; break;
+                    case 'cancelled': statusClass = 'bg-danger'; break;
+                }
+                
+                html += `
+                    <div class="event-instance">
+                        <span class="instance-date">${formattedStartDate} - ${formattedEndDate}</span>
+                        <span class="badge ${statusClass} instance-badge">${instance.status}</span>
+                    </div>
+                `;
+            });
+            
+            instancesContainer.innerHTML = html;
+        }
+
+        // Reset the event form to create a new event
+        function resetEventForm() {
+            document.getElementById('event-form').reset();
+            document.getElementById('event-id').value = '';
+            document.getElementById('form-title').textContent = 'Create New Event';
+            document.getElementById('save-event-btn').textContent = 'Create Event';
+            
+            // Reset date pickers
+            const now = new Date();
+            const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+            
+            flatpickr("#event-start-date", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                minDate: "today",
+                defaultDate: now
+            });
+            
+            flatpickr("#event-end-date", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                minDate: "today",
+                defaultDate: oneHourLater
+            });
+            
+            // Hide recurrence options
+            document.getElementById('recurrence-options').style.display = 'none';
+            document.getElementById('weekly-options').style.display = 'none';
+        }
+
+        // Populate the event form for editing
+        function populateEventForm(event) {
+            document.getElementById('event-id').value = event.id;
+            document.getElementById('event-name').value = event.name;
+            document.getElementById('event-description').value = event.description || '';
+            document.getElementById('event-location').value = event.location || '';
+            
+            // Set date pickers
+            flatpickr("#event-start-date", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                defaultDate: event.startDate
+            });
+            
+            flatpickr("#event-end-date", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                defaultDate: event.endDate
+            });
+            
+            // Set recurrence options
+            document.getElementById('is-recurring').checked = event.isRecurring;
+            
+            if (event.isRecurring) {
+                document.getElementById('recurrence-options').style.display = 'block';
+                document.getElementById('recurrence-type').value = event.recurrenceType || 'daily';
+                document.getElementById('recurrence-interval').value = event.recurrenceInterval || 1;
+                
+                // Update interval label
+                const intervalLabel = document.getElementById('interval-label');
+                switch (event.recurrenceType) {
+                    case 'daily': intervalLabel.textContent = 'day(s)'; break;
+                    case 'weekly': intervalLabel.textContent = 'week(s)'; break;
+                    case 'monthly': intervalLabel.textContent = 'month(s)'; break;
+                    case 'yearly': intervalLabel.textContent = 'year(s)'; break;
+                }
+                
+                // Set weekly options if applicable
+                if (event.recurrenceType === 'weekly') {
+                    document.getElementById('weekly-options').style.display = 'block';
+                    
+                    // Reset all checkboxes
+                    for (let i = 0; i < 7; i++) {
+                        document.getElementById(`day-${i}`).checked = false;
+                    }
+                    
+                    // Check selected days
+                    if (event.recurrenceDays && event.recurrenceDays.length > 0) {
+                        event.recurrenceDays.forEach(day => {
+                            document.getElementById(`day-${day}`).checked = true;
+                        });
+                    }
+                }
+                
+                // Set recurrence end date
+                if (event.recurrenceEndDate) {
+                    flatpickr("#recurrence-end-date", {
+                        enableTime: false,
+                        dateFormat: "Y-m-d",
+                        defaultDate: event.recurrenceEndDate
+                    });
+                } else {
+                    document.getElementById('recurrence-end-date').value = '';
+                }
+            } else {
+                document.getElementById('recurrence-options').style.display = 'none';
+            }
+            
+            // Update form title and button text
+            document.getElementById('form-title').textContent = 'Edit Event';
+            document.getElementById('save-event-btn').textContent = 'Update Event';
+        }
+
+        // Save or update event
+        async function saveEvent() {
+            const eventId = document.getElementById('event-id').value;
+            const isEditing = !!eventId;
+            
+            // Get form values
+            const name = document.getElementById('event-name').value;
+            const description = document.getElementById('event-description').value;
+            const location = document.getElementById('event-location').value;
+            const startDate = document.getElementById('event-start-date').value;
+            const endDate = document.getElementById('event-end-date').value;
+            const isRecurring = document.getElementById('is-recurring').checked;
+            
+            // Recurrence options (if applicable)
+            let recurrenceType = null;
+            let recurrenceInterval = null;
+            let recurrenceDays = null;
+            let recurrenceEndDate = null;
+            
+            if (isRecurring) {
+                recurrenceType = document.getElementById('recurrence-type').value;
+                recurrenceInterval = parseInt(document.getElementById('recurrence-interval').value) || 1;
+                
+                if (recurrenceType === 'weekly') {
+                    recurrenceDays = [];
+                    for (let i = 0; i < 7; i++) {
+                        if (document.getElementById(`day-${i}`).checked) {
+                            recurrenceDays.push(i);
+                        }
+                    }
+                }
+                
+                recurrenceEndDate = document.getElementById('recurrence-end-date').value || null;
+            }
+            
+            // Create event data object
+            const eventData = {
+                userId: currentUser.id,
+                name,
+                description,
+                location,
+                startDate,
+                endDate,
+                isRecurring,
+                recurrenceType,
+                recurrenceInterval,
+                recurrenceDays,
+                recurrenceEndDate
+            };
+            
+            showLoading();
+            
+            try {
+                let response;
+                
+                if (isEditing) {
+                    // Update existing event
+                    response = await fetch(`/api/scheduled-events/${eventId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(eventData)
+                    });
+                } else {
+                    // Create new event
+                    response = await fetch('/api/scheduled-events', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(eventData)
+                    });
+                }
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to save event');
+                }
+                
+                const savedEvent = await response.json();
+                
+                // Show success message
+                showAlert(`Event ${isEditing ? 'updated' : 'created'} successfully!`, 'success');
+                
+                // Reload user events
+                await loadUserEvents();
+                
+                // Switch back to events tab
+                const eventsTab = document.getElementById('events-tab');
+                bootstrap.Tab.getOrCreateInstance(eventsTab).show();
+                
+            } catch (error) {
+                console.error('Error saving event:', error);
+                showAlert(error.message || `Failed to ${isEditing ? 'update' : 'create'} event. Please try again.`, 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Delete an event
+        async function deleteEvent(eventId) {
+            showLoading();
+            
+            try {
+                const response = await fetch(`/api/scheduled-events/${eventId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ userId: currentUser.id })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to delete event');
+                }
+                
+                // Show success message
+                showAlert('Event deleted successfully!', 'success');
+                
+                // Reload user events
+                await loadUserEvents();
+                
+            } catch (error) {
+                console.error('Error deleting event:', error);
+                showAlert(error.message || 'Failed to delete event. Please try again.', 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Populate event select for registrations
+        function populateEventSelect(events) {
+            const selectElement = document.getElementById('select-event');
+            
+            // Clear existing options except the default
+            while (selectElement.options.length > 1) {
+                selectElement.remove(1);
+            }
+            
+            // Add options for each event
+            events.forEach(event => {
+                const option = document.createElement('option');
+                option.value = event.id;
+                option.textContent = event.name;
+                selectElement.appendChild(option);
+            });
+        }
+
+        // Load event instances for the registrations tab
+        async function loadEventInstances(eventId) {
+            showLoading();
+            
+            try {
+                const response = await fetch(`/api/scheduled-events/${eventId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch event instances');
+                }
+                
+                const event = await response.json();
+                const instances = event.instances || [];
+                
+                // Populate instance select
+                populateInstanceSelect(instances);
+                
+                // Show instances dropdown
+                document.getElementById('event-instances').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading event instances:', error);
+                showAlert(error.message || 'Failed to load event instances. Please try again.', 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Populate instance select for registrations
+        function populateInstanceSelect(instances) {
+            const selectElement = document.getElementById('select-instance');
+            
+            // Clear existing options except the default
+            while (selectElement.options.length > 1) {
+                selectElement.remove(1);
+            }
+            
+            // Sort instances by start date
+            instances.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+            
+            // Add options for each instance
+            instances.forEach(instance => {
+                const startDate = new Date(instance.startDate);
+                const option = document.createElement('option');
+                option.value = instance.id;
+                option.textContent = `${formatDateTime(startDate)} (${instance.status})`;
+                selectElement.appendChild(option);
+            });
+        }
+
+        // Load registrations for an event instance
+        async function loadRegistrations(instanceId) {
+            showLoading();
+            
+            try {
+                const response = await fetch(`/api/scheduled-events/instances/${instanceId}/registrations?userId=${currentUser.id}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch registrations');
+                }
+                
+                const registrations = await response.json();
+                
+                // Display registrations
+                displayRegistrations(registrations);
+                
+                // Show registrations list
+                document.getElementById('registrations-list').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading registrations:', error);
+                showAlert(error.message || 'Failed to load registrations. Please try again.', 'danger');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Display registrations in the table
+        function displayRegistrations(registrations) {
+            const tableBody = document.getElementById('registrations-table-body');
+            const noRegistrationsMessage = document.getElementById('no-registrations');
+            
+            if (registrations.length === 0) {
+                tableBody.innerHTML = '';
+                noRegistrationsMessage.style.display = 'block';
+                return;
+            }
+            
+            noRegistrationsMessage.style.display = 'none';
+            
+            let html = '';
+            
+            registrations.forEach(reg => {
+                const registrationDate = new Date(reg.registrationDate);
+                
+                let statusBadge = '';
+                switch (reg.status) {
+                    case 'registered':
+                        statusBadge = '<span class="badge bg-success">Registered</span>';
+                        break;
+                    case 'cancelled':
+                        statusBadge = '<span class="badge bg-danger">Cancelled</span>';
+                        break;
+                    case 'attended':
+                        statusBadge = '<span class="badge bg-primary">Attended</span>';
+                        break;
+                }
+                
+                html += `
+                    <tr>
+                        <td>${reg.visitorName}</td>
+                        <td>${reg.visitorPhone}</td>
+                        <td>${reg.visitorEmail || '-'}</td>
+                        <td>${formatDateTime(registrationDate)}</td>
+                        <td>${statusBadge}</td>
+                    </tr>
+                `;
+            });
+            
+            tableBody.innerHTML = html;
+        }
+
+        // Helper function to show alert toast
+        function showAlert(message, type = 'info') {
+            const toast = document.getElementById('alertToast');
+            const toastTitle = document.getElementById('toast-title');
+            const toastMessage = document.getElementById('toast-message');
+            
+            // Set title based on type
+            switch (type) {
+                case 'success':
+                    toastTitle.textContent = 'Success';
+                    toast.className = 'toast bg-success text-white';
+                    break;
+                case 'danger':
+                    toastTitle.textContent = 'Error';
+                    toast.className = 'toast bg-danger text-white';
+                    break;
+                case 'warning':
+                    toastTitle.textContent = 'Warning';
+                    toast.className = 'toast bg-warning';
+                    break;
+                default:
+                    toastTitle.textContent = 'Information';
+                    toast.className = 'toast bg-info text-white';
+            }
+            
+            // Set message
+            toastMessage.textContent = message;
+            
+            // Show toast
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        }
+
+        // Helper function to show loading overlay
+        function showLoading() {
+            document.getElementById('loading-overlay').style.display = 'flex';
+        }
+
+        // Helper function to hide loading overlay
+        function hideLoading() {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+
+        // Helper function to format date and time
+        function formatDateTime(date) {
+            if (!(date instanceof Date)) {
+                date = new Date(date);
+            }
+            
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        // Helper function to format just the date
+        function formatDate(date) {
+            if (!(date instanceof Date)) {
+                date = new Date(date);
+            }
+            
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        // Helper function to format just the time
+        function formatTime(date) {
+            if (!(date instanceof Date)) {
+                date = new Date(date);
+            }
+            
+            return date.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>
