@@ -1,0 +1,254 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Visitor Sign-In App Monitoring Resources'
+
+Parameters:
+  AppName:
+    Type: String
+    Default: visitor-sign-in-app
+    Description: Name of the application
+  
+  EnvironmentName:
+    Type: String
+    Default: production
+    Description: Environment name (e.g., development, staging, production)
+  
+  EnvironmentId:
+    Type: String
+    Description: Elastic Beanstalk environment ID to monitor
+  
+  NotificationEmail:
+    Type: String
+    Description: Email address to receive alert notifications
+
+Resources:
+  # SNS Topic for alarm notifications
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: !Sub '${AppName}-${EnvironmentName}-alerts'
+      TopicName: !Sub '${AppName}-${EnvironmentName}-alerts'
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref NotificationEmail
+
+  # CloudWatch Dashboard
+  ApplicationDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${AppName}-${EnvironmentName}-dashboard'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/ElasticBeanstalk", "EnvironmentHealth", "EnvironmentName", "${EnvironmentName}"]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Environment Health"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/ElasticBeanstalk", "ApplicationRequestsTotal", "EnvironmentName", "${EnvironmentName}"]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "Total Requests"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/ElasticBeanstalk", "ApplicationLatencyP99", "EnvironmentName", "${EnvironmentName}"]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Application Latency (P99)"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/ElasticBeanstalk", "ApplicationRequests5xx", "EnvironmentName", "${EnvironmentName}"]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "5XX Errors"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/RDS", "CPUUtilization", "DBInstanceIdentifier", "${AppName}-${EnvironmentName}-db"]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Database CPU Utilization"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/RDS", "DatabaseConnections", "DBInstanceIdentifier", "${AppName}-${EnvironmentName}-db"]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "Database Connections"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 18,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", "FunctionName", "${AppName}-${EnvironmentName}-event-generator"],
+                  ["AWS/Lambda", "Errors", "FunctionName", "${AppName}-${EnvironmentName}-event-generator"],
+                  ["AWS/Lambda", "Duration", "FunctionName", "${AppName}-${EnvironmentName}-event-generator"]
+                ],
+                "period": 300,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "title": "Event Generator Lambda Metrics"
+              }
+            }
+          ]
+        }
+
+  # High Error Rate Alarm
+  HighErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${EnvironmentName}-high-error-rate'
+      AlarmDescription: 'Alarm when error rate exceeds threshold'
+      MetricName: ApplicationRequests5xx
+      Namespace: AWS/ElasticBeanstalk
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 5
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: EnvironmentName
+          Value: !Ref EnvironmentName
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+  # Environment Health Alarm
+  EnvironmentHealthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${EnvironmentName}-environment-health'
+      AlarmDescription: 'Alarm when environment health degrades'
+      MetricName: EnvironmentHealth
+      Namespace: AWS/ElasticBeanstalk
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 20
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: EnvironmentName
+          Value: !Ref EnvironmentName
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+  # High Latency Alarm
+  HighLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${EnvironmentName}-high-latency'
+      AlarmDescription: 'Alarm when request latency exceeds threshold'
+      MetricName: ApplicationLatencyP99
+      Namespace: AWS/ElasticBeanstalk
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 5000
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: EnvironmentName
+          Value: !Ref EnvironmentName
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+  # Database CPU Alarm
+  DatabaseCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AppName}-${EnvironmentName}-db-cpu'
+      AlarmDescription: 'Alarm when database CPU exceeds threshold'
+      MetricName: CPUUtilization
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 85
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Sub '${AppName}-${EnvironmentName}-db'
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+      TreatMissingData: notBreaching
+
+Outputs:
+  DashboardURL:
+    Description: URL to the CloudWatch Dashboard
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${AppName}-${EnvironmentName}-dashboard'
+
+  AlertTopicARN:
+    Description: ARN of the SNS Topic for alerts
+    Value: !Ref AlertTopic

@@ -9,6 +9,7 @@ This directory contains resources for deploying the Visitor Sign-In application 
 - `CODEPIPELINE_DEPLOYMENT_STEPS.md` - Detailed CodePipeline deployment instructions
 - `codepipeline.yaml` - CloudFormation template for CI/CD pipeline deployment
 - `scheduled-events-resources.yaml` - CloudFormation template for scheduled events resources
+- `monitoring-resources.yaml` - CloudFormation template for CloudWatch monitoring resources
 
 ## Deployment Scripts
 
@@ -16,6 +17,8 @@ The application includes deployment scripts in the `scripts/` directory:
 
 - `setup-codepipeline.sh` - Sets up the AWS CodePipeline CI/CD deployment
 - `setup-scheduled-events.sh` - Deploys the scheduled events resources
+- `setup-monitoring.sh` - Deploys CloudWatch monitoring resources and alarms
+- `deploy-complete.sh` - One-click deployment of the complete application stack
 
 ## Architecture Overview
 
@@ -55,6 +58,14 @@ Deploys:
 - CloudWatch alarms
 - IAM roles and policies
 - VPC security group updates
+
+### monitoring-resources.yaml
+
+Deploys:
+- CloudWatch dashboards
+- CloudWatch alarms
+- SNS topics for notifications
+- Email subscriptions for alerts
 
 ## Prerequisites
 
