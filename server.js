@@ -858,6 +858,311 @@ app.post('/api/visitors', async (req, res) => {
   }
 });
 
+// VISITOR DIRECTORY ENDPOINTS
+app.get('/api/directory', async (req, res) => {
+  try {
+    // Get all directory entries from the database
+    const result = await db.query('SELECT * FROM visitor_directory ORDER BY last_name, first_name');
+    
+    // Transform database field names to match our API format
+    const directoryEntries = result.rows.map(entry => ({
+      id: entry.id.toString(),
+      firstName: entry.first_name,
+      lastName: entry.last_name,
+      phone: entry.phone,
+      address: entry.address,
+      dateOfBirth: entry.date_of_birth ? new Date(entry.date_of_birth).toISOString().split('T')[0] : null,
+      createdAt: entry.created_at,
+      updatedAt: entry.updated_at
+    }));
+    
+    res.json(directoryEntries);
+  } catch (error) {
+    console.error('Error fetching visitor directory:', error);
+    
+    // Fallback to in-memory data
+    res.json(inMemory.visitorDirectory);
+  }
+});
+
+app.get('/api/directory/:id', async (req, res) => {
+  const directoryId = req.params.id;
+  
+  try {
+    // Get the directory entry from the database
+    const result = await db.query('SELECT * FROM visitor_directory WHERE id = $1', [directoryId]);
+    
+    if (result.rows.length > 0) {
+      const entry = result.rows[0];
+      
+      // Transform database field names to match our API format
+      const formattedEntry = {
+        id: entry.id.toString(),
+        firstName: entry.first_name,
+        lastName: entry.last_name,
+        phone: entry.phone,
+        address: entry.address,
+        dateOfBirth: entry.date_of_birth ? new Date(entry.date_of_birth).toISOString().split('T')[0] : null,
+        createdAt: entry.created_at,
+        updatedAt: entry.updated_at
+      };
+      
+      res.json(formattedEntry);
+    } else {
+      // Try in-memory data if entry not found in database
+      const entry = inMemory.visitorDirectory.find(e => e.id === directoryId);
+      
+      if (entry) {
+        res.json(entry);
+      } else {
+        res.status(404).json({ message: 'Directory entry not found' });
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching directory entry:', error);
+    
+    // Fallback to in-memory data
+    const entry = inMemory.visitorDirectory.find(e => e.id === directoryId);
+    
+    if (entry) {
+      res.json(entry);
+    } else {
+      res.status(404).json({ message: 'Directory entry not found' });
+    }
+  }
+});
+
+app.post('/api/directory', async (req, res) => {
+  const { firstName, lastName, phone, address, dateOfBirth } = req.body;
+  
+  // Validate required fields
+  if (!firstName || !lastName || !phone) {
+    return res.status(400).json({ message: 'First name, last name, and phone number are required' });
+  }
+  
+  try {
+    // Check if phone number already exists
+    const existingEntry = await db.query('SELECT * FROM visitor_directory WHERE phone = $1', [phone]);
+    
+    if (existingEntry.rows.length > 0) {
+      return res.status(400).json({ 
+        message: 'A visitor with this phone number already exists in the directory',
+        existingEntry: {
+          id: existingEntry.rows[0].id.toString(),
+          firstName: existingEntry.rows[0].first_name,
+          lastName: existingEntry.rows[0].last_name
+        }
+      });
+    }
+    
+    // Insert new entry into the database
+    const result = await db.query(
+      `INSERT INTO visitor_directory 
+       (first_name, last_name, phone, address, date_of_birth, created_at, updated_at) 
+       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
+       RETURNING *`,
+      [firstName, lastName, phone, address || '', dateOfBirth || null]
+    );
+    
+    const newEntry = result.rows[0];
+    
+    // Transform database field names to match our API format
+    const formattedEntry = {
+      id: newEntry.id.toString(),
+      firstName: newEntry.first_name,
+      lastName: newEntry.last_name,
+      phone: newEntry.phone,
+      address: newEntry.address,
+      dateOfBirth: newEntry.date_of_birth ? new Date(newEntry.date_of_birth).toISOString().split('T')[0] : null,
+      createdAt: newEntry.created_at,
+      updatedAt: newEntry.updated_at
+    };
+    
+    // Log for debugging
+    console.log('Added new entry to visitor directory:', `${firstName} ${lastName}`);
+    
+    res.status(201).json(formattedEntry);
+  } catch (error) {
+    console.error('Error adding directory entry:', error);
+    
+    // Fallback to in-memory if database error
+    try {
+      // Check if phone number already exists in memory
+      if (inMemory.visitorDirectory.some(entry => entry.phone === phone)) {
+        return res.status(400).json({ message: 'A visitor with this phone number already exists in the directory' });
+      }
+      
+      // Create new entry in memory
+      const newEntry = {
+        id: (inMemory.visitorDirectory.length + 1).toString(),
+        firstName,
+        lastName,
+        phone,
+        address: address || '',
+        dateOfBirth: dateOfBirth || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Add to in-memory directory array
+      inMemory.visitorDirectory.push(newEntry);
+      
+      // Log for debugging
+      console.log('Added new entry to in-memory visitor directory:', `${firstName} ${lastName}`);
+      
+      res.status(201).json(newEntry);
+    } catch (err) {
+      console.error('Error adding to in-memory directory:', err);
+      res.status(500).json({ message: 'Failed to add visitor to directory' });
+    }
+  }
+});
+
+app.put('/api/directory/:id', async (req, res) => {
+  const directoryId = req.params.id;
+  const { firstName, lastName, phone, address, dateOfBirth } = req.body;
+  
+  // Validate required fields
+  if (!firstName || !lastName || !phone) {
+    return res.status(400).json({ message: 'First name, last name, and phone number are required' });
+  }
+  
+  try {
+    // Check if the entry exists
+    const entryCheck = await db.query('SELECT * FROM visitor_directory WHERE id = $1', [directoryId]);
+    
+    if (entryCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Directory entry not found' });
+    }
+    
+    // Check if phone number is already used by another entry
+    const phoneCheck = await db.query('SELECT * FROM visitor_directory WHERE phone = $1 AND id != $2', [phone, directoryId]);
+    
+    if (phoneCheck.rows.length > 0) {
+      return res.status(400).json({ 
+        message: 'Phone number is already used by another visitor in the directory',
+        existingEntry: {
+          id: phoneCheck.rows[0].id.toString(),
+          firstName: phoneCheck.rows[0].first_name,
+          lastName: phoneCheck.rows[0].last_name
+        }
+      });
+    }
+    
+    // Update the entry in the database
+    const result = await db.query(
+      `UPDATE visitor_directory 
+       SET first_name = $1, last_name = $2, phone = $3, address = $4, date_of_birth = $5, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $6 
+       RETURNING *`,
+      [firstName, lastName, phone, address || '', dateOfBirth || null, directoryId]
+    );
+    
+    const updatedEntry = result.rows[0];
+    
+    // Transform database field names to match our API format
+    const formattedEntry = {
+      id: updatedEntry.id.toString(),
+      firstName: updatedEntry.first_name,
+      lastName: updatedEntry.last_name,
+      phone: updatedEntry.phone,
+      address: updatedEntry.address,
+      dateOfBirth: updatedEntry.date_of_birth ? new Date(updatedEntry.date_of_birth).toISOString().split('T')[0] : null,
+      createdAt: updatedEntry.created_at,
+      updatedAt: updatedEntry.updated_at
+    };
+    
+    // Log for debugging
+    console.log('Updated visitor directory entry:', `${firstName} ${lastName}`);
+    
+    res.json(formattedEntry);
+  } catch (error) {
+    console.error('Error updating directory entry:', error);
+    
+    // Fallback to in-memory if database error
+    try {
+      // Check if the entry exists in memory
+      const entryIndex = inMemory.visitorDirectory.findIndex(entry => entry.id === directoryId);
+      
+      if (entryIndex === -1) {
+        return res.status(404).json({ message: 'Directory entry not found' });
+      }
+      
+      // Check if phone number is already used by another entry
+      const phoneConflict = inMemory.visitorDirectory.find(entry => entry.phone === phone && entry.id !== directoryId);
+      
+      if (phoneConflict) {
+        return res.status(400).json({ message: 'Phone number is already used by another visitor in the directory' });
+      }
+      
+      // Update the entry in memory
+      const updatedEntry = {
+        ...inMemory.visitorDirectory[entryIndex],
+        firstName,
+        lastName,
+        phone,
+        address: address || '',
+        dateOfBirth: dateOfBirth || null,
+        updatedAt: new Date().toISOString()
+      };
+      
+      inMemory.visitorDirectory[entryIndex] = updatedEntry;
+      
+      // Log for debugging
+      console.log('Updated in-memory visitor directory entry:', `${firstName} ${lastName}`);
+      
+      res.json(updatedEntry);
+    } catch (err) {
+      console.error('Error updating in-memory directory:', err);
+      res.status(500).json({ message: 'Failed to update visitor directory entry' });
+    }
+  }
+});
+
+app.delete('/api/directory/:id', async (req, res) => {
+  const directoryId = req.params.id;
+  
+  try {
+    // Check if the entry exists
+    const entryCheck = await db.query('SELECT * FROM visitor_directory WHERE id = $1', [directoryId]);
+    
+    if (entryCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Directory entry not found' });
+    }
+    
+    // Delete the entry from the database
+    await db.query('DELETE FROM visitor_directory WHERE id = $1', [directoryId]);
+    
+    // Log for debugging
+    console.log('Deleted visitor directory entry with ID:', directoryId);
+    
+    res.json({ message: 'Directory entry deleted successfully', id: directoryId });
+  } catch (error) {
+    console.error('Error deleting directory entry:', error);
+    
+    // Fallback to in-memory if database error
+    try {
+      // Check if the entry exists in memory
+      const entryIndex = inMemory.visitorDirectory.findIndex(entry => entry.id === directoryId);
+      
+      if (entryIndex === -1) {
+        return res.status(404).json({ message: 'Directory entry not found' });
+      }
+      
+      // Remove the entry from memory
+      inMemory.visitorDirectory.splice(entryIndex, 1);
+      
+      // Log for debugging
+      console.log('Deleted in-memory visitor directory entry with ID:', directoryId);
+      
+      res.json({ message: 'Directory entry deleted successfully', id: directoryId });
+    } catch (err) {
+      console.error('Error deleting in-memory directory entry:', err);
+      res.status(500).json({ message: 'Failed to delete visitor directory entry' });
+    }
+  }
+});
+
 // Get all users (for development purposes)
 app.get('/api/users', async (req, res) => {
   try {
@@ -922,6 +1227,16 @@ app.get('/analytics', (req, res) => {
   const analyticsPath = path.join(__dirname, 'next.js-frontend/public/analytics.html');
   if (fs.existsSync(analyticsPath)) {
     res.sendFile(analyticsPath);
+  } else {
+    res.redirect('/dashboard');
+  }
+});
+
+// Send directory.html for /directory path
+app.get('/directory', (req, res) => {
+  const directoryPath = path.join(__dirname, 'next.js-frontend/public/directory.html');
+  if (fs.existsSync(directoryPath)) {
+    res.sendFile(directoryPath);
   } else {
     res.redirect('/dashboard');
   }

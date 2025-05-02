@@ -107,11 +107,23 @@
                 <div class="mb-3">
                     <label for="phone" class="form-label">Phone Number</label>
                     <input type="tel" class="form-control" id="phone" placeholder="(555) 555-5555">
+                    <div class="form-text">Used to identify returning visitors.</div>
                 </div>
                 
                 <div class="mb-3">
                     <label for="address" class="form-label">Address</label>
                     <textarea class="form-control" id="address" rows="2"></textarea>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="date-of-birth" class="form-label">Date of Birth</label>
+                    <input type="date" class="form-control" id="date-of-birth">
+                </div>
+                
+                <!-- Existing visitor alert -->
+                <div class="alert alert-info mb-3" id="existing-visitor-alert" style="display: none;">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <span id="existing-visitor-message">Welcome back! We've recognized you from your phone number.</span>
                 </div>
                 
                 <div class="mb-3 form-check">
@@ -211,6 +223,46 @@
             // Fetch event details from the API
             fetchEventDetails(eventId);
             
+            // Setup phone number check for existing visitors
+            document.getElementById('phone').addEventListener('blur', async function() {
+                const phone = this.value.trim();
+                if (phone) {
+                    try {
+                        const response = await fetch(`/api/directory?phone=${encodeURIComponent(phone)}`);
+                        const data = await response.json();
+                        
+                        // Check if a visitor with this phone exists
+                        if (response.ok && Array.isArray(data) && data.length > 0) {
+                            const existingVisitor = data[0];
+                            const alertDiv = document.getElementById('existing-visitor-alert');
+                            
+                            // Show welcome back message
+                            alertDiv.style.display = 'block';
+                            document.getElementById('existing-visitor-message').textContent = 
+                                `Welcome back, ${existingVisitor.firstName}! We've recognized you from your phone number.`;
+                                
+                            // Pre-fill form fields with existing data if fields are empty
+                            if (!document.getElementById('first-name').value)
+                                document.getElementById('first-name').value = existingVisitor.firstName;
+                            if (!document.getElementById('last-name').value)
+                                document.getElementById('last-name').value = existingVisitor.lastName;
+                            if (!document.getElementById('address').value && existingVisitor.address)
+                                document.getElementById('address').value = existingVisitor.address;
+                            if (!document.getElementById('date-of-birth').value && existingVisitor.dateOfBirth)
+                                document.getElementById('date-of-birth').value = existingVisitor.dateOfBirth;
+                        } else {
+                            // Hide alert if no match
+                            document.getElementById('existing-visitor-alert').style.display = 'none';
+                        }
+                    } catch (error) {
+                        console.error('Error checking for existing visitor:', error);
+                    }
+                } else {
+                    // Hide alert if phone field is empty
+                    document.getElementById('existing-visitor-alert').style.display = 'none';
+                }
+            });
+            
             // Handle form submission
             document.getElementById('visitor-form').addEventListener('submit', async function(e) {
                 e.preventDefault();
@@ -220,6 +272,7 @@
                 const email = document.getElementById('email').value;
                 const phone = document.getElementById('phone').value;
                 const address = document.getElementById('address').value;
+                const dateOfBirth = document.getElementById('date-of-birth').value;
                 const sendUpdates = document.getElementById('notify-check').checked;
                 const rememberMe = document.getElementById('remember-check').checked;
                 
@@ -231,6 +284,7 @@
                         email,
                         phone,
                         address,
+                        dateOfBirth,
                         sendUpdates
                     });
                 } else {
@@ -251,6 +305,7 @@
                             email, 
                             phone, 
                             address, 
+                            dateOfBirth,
                             eventId,
                             sendUpdates
                         }),
@@ -280,12 +335,19 @@
                             document.getElementById('notification-status').textContent = 'You have opted out of email notifications.';
                         }
                         
+                        // Show returning visitor message if applicable
+                        if (data.isExistingVisitor) {
+                            const messageElement = document.querySelector('#confirmation-name');
+                            messageElement.innerHTML = `Welcome back, ${firstName}! <span class="badge bg-info">Returning Visitor</span>`;
+                        }
+                        
                         // Show confirmation modal
                         const confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
                         confirmationModal.show();
                         
-                        // Reset form
+                        // Reset form and hide any existing visitor alert
                         document.getElementById('visitor-form').reset();
+                        document.getElementById('existing-visitor-alert').style.display = 'none';
                     } else {
                         alert(`Sign-in failed: ${data.message || 'Unknown error'}`);
                     }
@@ -410,6 +472,7 @@
                     document.getElementById('email').value = visitorData.email || '';
                     document.getElementById('phone').value = visitorData.phone || '';
                     document.getElementById('address').value = visitorData.address || '';
+                    document.getElementById('date-of-birth').value = visitorData.dateOfBirth || '';
                     document.getElementById('notify-check').checked = visitorData.sendUpdates || false;
                     
                     // Add a small notification that data was loaded
