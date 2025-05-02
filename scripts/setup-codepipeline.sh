@@ -1,124 +1,151 @@
 #!/bin/bash
 
-# Script to set up and deploy using AWS CodePipeline
-set -e
+# Script to deploy the CodePipeline CloudFormation stack
 
-# Configuration
+# Set default values
 APP_NAME="visitor-sign-in-app"
-ENVIRONMENT="production"
+ENV_NAME="production"
 REGION="us-east-1"
-STACK_NAME="${APP_NAME}-pipeline"
-ARTIFACT_BUCKET="${APP_NAME}-artifacts"
+REPO_NAME="visitor-sign-in-app"
 BRANCH_NAME="main"
+EB_APP_NAME="visitor-sign-in-app"
+EB_ENV_NAME="visitor-sign-in-app-production"
+S3_BUCKET_NAME="visitor-app-artifacts"
+DB_NAME="visitor_app"
+DB_USERNAME="postgres"
+DB_PORT="5432"
+EMAIL_SERVICE_ENABLED="true"
 
-# Colors for output
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+echo "=== Deploying CodePipeline CloudFormation Stack ==="
+echo "This script will create all necessary resources for CI/CD pipeline deployment."
 
-# Check if AWS CLI is installed
-if ! command -v aws &> /dev/null; then
-    echo -e "${RED}AWS CLI is not installed. Please install it first.${NC}"
-    exit 1
+# Ask for confirmation
+read -p "Continue with deployment? (y/n): " CONFIRM
+if [[ $CONFIRM != "y" && $CONFIRM != "Y" ]]; then
+  echo "Deployment canceled."
+  exit 0
 fi
 
-# Check if AWS is configured
-if ! aws sts get-caller-identity &> /dev/null; then
-    echo -e "${RED}AWS CLI is not configured. Please run 'aws configure' first.${NC}"
-    exit 1
-fi
+# Get inputs from user
+read -p "Application name [$APP_NAME]: " APP_NAME_INPUT
+read -p "Environment name [$ENV_NAME]: " ENV_NAME_INPUT
+read -p "AWS region [$REGION]: " REGION_INPUT
+read -p "CodeCommit repository name [$REPO_NAME]: " REPO_NAME_INPUT
+read -p "Branch name [$BRANCH_NAME]: " BRANCH_NAME_INPUT
+read -p "Elastic Beanstalk application name [$EB_APP_NAME]: " EB_APP_NAME_INPUT
+read -p "Elastic Beanstalk environment name [$EB_ENV_NAME]: " EB_ENV_NAME_INPUT
+read -p "S3 artifact bucket name [$S3_BUCKET_NAME]: " S3_BUCKET_NAME_INPUT
+read -p "Database name [$DB_NAME]: " DB_NAME_INPUT
+read -p "Database username [$DB_USERNAME]: " DB_USERNAME_INPUT
+read -p "Database port [$DB_PORT]: " DB_PORT_INPUT
+read -p "Email service enabled (true/false) [$EMAIL_SERVICE_ENABLED]: " EMAIL_SERVICE_ENABLED_INPUT
+read -s -p "Database password: " DB_PASSWORD
+echo
+read -s -p "Session secret: " SESSION_SECRET
+echo
 
-# Prompt for configuration values
-read -p "Enter application name [$APP_NAME]: " input
-APP_NAME=${input:-$APP_NAME}
+# Use user inputs if provided
+APP_NAME=${APP_NAME_INPUT:-$APP_NAME}
+ENV_NAME=${ENV_NAME_INPUT:-$ENV_NAME}
+REGION=${REGION_INPUT:-$REGION}
+REPO_NAME=${REPO_NAME_INPUT:-$REPO_NAME}
+BRANCH_NAME=${BRANCH_NAME_INPUT:-$BRANCH_NAME}
+EB_APP_NAME=${EB_APP_NAME_INPUT:-$EB_APP_NAME}
+EB_ENV_NAME=${EB_ENV_NAME_INPUT:-$EB_ENV_NAME}
+S3_BUCKET_NAME=${S3_BUCKET_NAME_INPUT:-$S3_BUCKET_NAME}
+DB_NAME=${DB_NAME_INPUT:-$DB_NAME}
+DB_USERNAME=${DB_USERNAME_INPUT:-$DB_USERNAME}
+DB_PORT=${DB_PORT_INPUT:-$DB_PORT}
+EMAIL_SERVICE_ENABLED=${EMAIL_SERVICE_ENABLED_INPUT:-$EMAIL_SERVICE_ENABLED}
+STACK_NAME="${APP_NAME}-${ENV_NAME}"
 
-read -p "Enter environment name (production, staging, development) [$ENVIRONMENT]: " input
-ENVIRONMENT=${input:-$ENVIRONMENT}
+# Store the database password in Parameter Store
+echo "Storing database password in Parameter Store..."
+aws ssm put-parameter \
+  --name "/visitor-sign-in-app/database-password" \
+  --type "SecureString" \
+  --value "$DB_PASSWORD" \
+  --overwrite \
+  --region $REGION
 
-read -p "Enter AWS region [$REGION]: " input
-REGION=${input:-$REGION}
+# Store session secret in Parameter Store
+echo "Storing session secret in Parameter Store..."
+aws ssm put-parameter \
+  --name "/visitor-sign-in-app/session-secret" \
+  --type "SecureString" \
+  --value "$SESSION_SECRET" \
+  --overwrite \
+  --region $REGION
 
-read -p "Enter CodeCommit repository name [$APP_NAME]: " input
-REPOSITORY_NAME=${input:-$APP_NAME}
+# Create S3 bucket for build artifacts
+echo "Creating S3 bucket for build artifacts..."
+aws s3api create-bucket \
+  --bucket $S3_BUCKET_NAME \
+  --region $REGION \
+  --create-bucket-configuration LocationConstraint=$REGION || true
 
-read -p "Enter branch name [$BRANCH_NAME]: " input
-BRANCH_NAME=${input:-$BRANCH_NAME}
+# Enable versioning on the bucket
+aws s3api put-bucket-versioning \
+  --bucket $S3_BUCKET_NAME \
+  --versioning-configuration Status=Enabled \
+  --region $REGION
 
-read -p "Enter Elastic Beanstalk application name [$APP_NAME]: " input
-EB_APP_NAME=${input:-$APP_NAME}
-
-read -p "Enter Elastic Beanstalk environment name [${APP_NAME}-${ENVIRONMENT}]: " input
-EB_ENV_NAME=${input:-"${APP_NAME}-${ENVIRONMENT}"}
-
-read -p "Enter S3 artifact bucket name [$ARTIFACT_BUCKET]: " input
-ARTIFACT_BUCKET=${input:-$ARTIFACT_BUCKET}
-
-read -p "Enter Stack name [$STACK_NAME]: " input
-STACK_NAME=${input:-$STACK_NAME}
-
-# Prompt for database password
-read -s -p "Enter database password: " DB_PASSWORD
-echo ""
-
-# Create S3 bucket for artifacts if it doesn't exist
-echo -e "${YELLOW}Checking if S3 artifact bucket exists...${NC}"
-if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
-    echo -e "${YELLOW}Creating S3 bucket for artifacts: $ARTIFACT_BUCKET${NC}"
-    aws s3 mb s3://$ARTIFACT_BUCKET --region $REGION
-    aws s3api put-bucket-versioning --bucket $ARTIFACT_BUCKET --versioning-configuration Status=Enabled
-    echo -e "${GREEN}S3 bucket created successfully!${NC}"
-else
-    echo -e "${GREEN}S3 bucket already exists!${NC}"
-fi
-
-# Deploy CloudFormation stack for CodePipeline
-echo -e "${YELLOW}Deploying CloudFormation stack for CodePipeline...${NC}"
+# Deploy CloudFormation stack
+echo "Deploying CloudFormation stack for CodePipeline..."
 aws cloudformation deploy \
-    --template-file ../deploy/codepipeline.yaml \
-    --stack-name $STACK_NAME \
-    --parameter-overrides \
-        AppName=$APP_NAME \
-        EnvironmentName=$ENVIRONMENT \
-        RepositoryName=$REPOSITORY_NAME \
-        BranchName=$BRANCH_NAME \
-        ElasticBeanstalkApplicationName=$EB_APP_NAME \
-        ElasticBeanstalkEnvironmentName=$EB_ENV_NAME \
-        DatabasePassword=$DB_PASSWORD \
-        ArtifactBucketName=$ARTIFACT_BUCKET \
-    --capabilities CAPABILITY_IAM \
-    --region $REGION
+  --template-file ../deploy/codepipeline.yaml \
+  --stack-name $STACK_NAME \
+  --region $REGION \
+  --parameter-overrides \
+    AppName=$APP_NAME \
+    EnvironmentName=$ENV_NAME \
+    RepositoryName=$REPO_NAME \
+    BranchName=$BRANCH_NAME \
+    ElasticBeanstalkApplicationName=$EB_APP_NAME \
+    ElasticBeanstalkEnvironmentName=$EB_ENV_NAME \
+    DatabasePassword=$DB_PASSWORD \
+    DatabaseName=$DB_NAME \
+    DatabaseUsername=$DB_USERNAME \
+    DatabasePort=$DB_PORT \
+    EmailServiceEnabled=$EMAIL_SERVICE_ENABLED \
+    SessionSecret=$SESSION_SECRET \
+    ArtifactBucketName=$S3_BUCKET_NAME \
+  --capabilities CAPABILITY_IAM
 
 # Check if deployment was successful
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}CloudFormation stack deployed successfully!${NC}"
-    
-    # Get repository URL
-    REPO_URL=$(aws cloudformation describe-stacks \
-        --stack-name $STACK_NAME \
-        --query "Stacks[0].Outputs[?OutputKey=='RepositoryCloneUrlHttp'].OutputValue" \
-        --output text \
-        --region $REGION)
-    
-    # Get pipeline URL
-    PIPELINE_URL=$(aws cloudformation describe-stacks \
-        --stack-name $STACK_NAME \
-        --query "Stacks[0].Outputs[?OutputKey=='PipelineURL'].OutputValue" \
-        --output text \
-        --region $REGION)
-    
-    echo -e "${GREEN}===========================================================${NC}"
-    echo -e "${GREEN}Deployment Complete!${NC}"
-    echo -e "${GREEN}===========================================================${NC}"
-    echo -e "${YELLOW}Next Steps:${NC}"
-    echo -e "1. Clone your CodeCommit repository:"
-    echo -e "   ${GREEN}git clone $REPO_URL${NC}"
-    echo -e "2. Push your code to the repository:"
-    echo -e "   ${GREEN}git push${NC}"
-    echo -e "3. Monitor your pipeline at:"
-    echo -e "   ${GREEN}$PIPELINE_URL${NC}"
-    echo -e "${GREEN}===========================================================${NC}"
+  echo "=== CodePipeline Stack Deployed Successfully ==="
+  
+  # Get CodeCommit repository URL
+  REPO_URL_HTTP=$(aws cloudformation describe-stacks \
+    --stack-name $STACK_NAME \
+    --query "Stacks[0].Outputs[?OutputKey=='RepositoryCloneUrlHttp'].OutputValue" \
+    --output text \
+    --region $REGION)
+  
+  REPO_URL_SSH=$(aws cloudformation describe-stacks \
+    --stack-name $STACK_NAME \
+    --query "Stacks[0].Outputs[?OutputKey=='RepositoryCloneUrlSsh'].OutputValue" \
+    --output text \
+    --region $REGION)
+  
+  PIPELINE_URL=$(aws cloudformation describe-stacks \
+    --stack-name $STACK_NAME \
+    --query "Stacks[0].Outputs[?OutputKey=='PipelineURL'].OutputValue" \
+    --output text \
+    --region $REGION)
+  
+  echo "CodeCommit Repository URL (HTTPS): $REPO_URL_HTTP"
+  echo "CodeCommit Repository URL (SSH): $REPO_URL_SSH"
+  echo "CodePipeline URL: $PIPELINE_URL"
+  echo ""
+  echo "Next steps:"
+  echo "1. Clone the repository"
+  echo "2. Copy your code to the repository"
+  echo "3. Commit and push to the repository"
+  echo "4. Monitor the pipeline in the AWS Console"
 else
-    echo -e "${RED}Failed to deploy CloudFormation stack.${NC}"
-    exit 1
+  echo "=== Deployment Failed ==="
+  echo "Check the CloudFormation console for more details."
+  exit 1
 fi

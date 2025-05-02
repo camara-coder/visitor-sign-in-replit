@@ -53,9 +53,30 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Serve static files from next.js-frontend/public
 app.use(express.static(path.join(__dirname, 'next.js-frontend/public')));
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+// Health check endpoint for AWS load balancer and monitoring
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check database connection
+    const dbStatus = await db.query('SELECT 1 as connected');
+    const dbConnected = dbStatus.rows && dbStatus.rows[0]?.connected === 1;
+    
+    res.json({ 
+      status: 'ok', 
+      message: 'Server is running',
+      version: '1.0.0',
+      scheduledEvents: true,
+      database: dbConnected ? 'connected' : 'disconnected',
+      time: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.json({ 
+      status: 'degraded', 
+      message: 'Server is running with issues',
+      database: 'disconnected',
+      time: new Date().toISOString()
+    });
+  }
 });
 
 // AUTHENTICATION ENDPOINTS
