@@ -45,6 +45,20 @@ async function setupDatabase() {
       )
     `);
     
+    // Create visitor directory table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS visitor_directory (
+        id SERIAL PRIMARY KEY,
+        first_name VARCHAR(50) NOT NULL,
+        last_name VARCHAR(50) NOT NULL,
+        phone VARCHAR(20) NOT NULL UNIQUE,
+        address TEXT,
+        date_of_birth DATE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
     console.log('Database schema setup completed successfully');
     
     // Check if default admin user exists, if not create one

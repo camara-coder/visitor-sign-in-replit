@@ -40,7 +40,8 @@ const inMemory = {
       endDate: new Date(Date.now() + 86400000).toISOString() // 24 hours later
     }
   ],
-  visitors: []
+  visitors: [],
+  visitorDirectory: []
 };
 
 // Middleware
@@ -646,7 +647,7 @@ app.get('/api/visitors', async (req, res) => {
 });
 
 app.post('/api/visitors', async (req, res) => {
-  const { firstName, lastName, email, phone, address, eventId, sendUpdates } = req.body;
+  const { firstName, lastName, email, phone, address, eventId, sendUpdates, dateOfBirth } = req.body;
   
   try {
     // Validate event exists in the database
@@ -672,6 +673,37 @@ app.post('/api/visitors', async (req, res) => {
         }
       : inMemory.events.find(e => e.id === eventId);
     
+    // Check if phone number exists in directory
+    let isExistingVisitor = false;
+    let directoryVisitor = null;
+    
+    if (phone) {
+      const directoryResult = await db.query('SELECT * FROM visitor_directory WHERE phone = $1', [phone]);
+      isExistingVisitor = directoryResult.rows.length > 0;
+      
+      if (isExistingVisitor) {
+        directoryVisitor = directoryResult.rows[0];
+        
+        // Update directory with any new information
+        if (address && address !== directoryVisitor.address) {
+          await db.query(
+            'UPDATE visitor_directory SET address = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            [address, directoryVisitor.id]
+          );
+        }
+      } else {
+        // Add to directory if not already present and has a phone number
+        await db.query(
+          `INSERT INTO visitor_directory 
+           (first_name, last_name, phone, address, date_of_birth, created_at, updated_at) 
+           VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [firstName, lastName, phone, address || '', dateOfBirth || null]
+        );
+        
+        console.log('Added new visitor to directory:', `${firstName} ${lastName}`);
+      }
+    }
+    
     // Insert new visitor into the database
     const result = await db.query(
       `INSERT INTO visitors 
@@ -694,7 +726,8 @@ app.post('/api/visitors', async (req, res) => {
       eventId: newVisitor.event_id.toString(),
       checkInTime: newVisitor.check_in_time,
       status: newVisitor.status,
-      sendUpdates: newVisitor.send_updates
+      sendUpdates: newVisitor.send_updates,
+      isExistingVisitor: isExistingVisitor
     };
     
     // Log for debugging
@@ -752,6 +785,30 @@ app.post('/api/visitors', async (req, res) => {
       return res.status(400).json({ message: 'Event not found' });
     }
     
+    // Check if phone number exists in in-memory directory
+    let isExistingVisitor = false;
+    
+    if (phone) {
+      isExistingVisitor = inMemory.visitorDirectory.some(v => v.phone === phone);
+      
+      if (!isExistingVisitor) {
+        // Add to in-memory directory
+        const newDirectoryEntry = {
+          id: (inMemory.visitorDirectory.length + 1).toString(),
+          firstName,
+          lastName,
+          phone,
+          address: address || '',
+          dateOfBirth: dateOfBirth || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        inMemory.visitorDirectory.push(newDirectoryEntry);
+        console.log('Added new visitor to in-memory directory:', `${firstName} ${lastName}`);
+      }
+    }
+    
     // Create new visitor in memory
     const newVisitor = {
       id: (inMemory.visitors.length + 1).toString(),
@@ -763,7 +820,8 @@ app.post('/api/visitors', async (req, res) => {
       eventId,
       checkInTime: new Date().toISOString(),
       status: 'checked-in',
-      sendUpdates: !!sendUpdates
+      sendUpdates: !!sendUpdates,
+      isExistingVisitor
     };
     
     // Add to in-memory visitors array
