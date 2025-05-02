@@ -980,6 +980,7 @@ app.get('/api/directory/:id', async (req, res) => {
         firstName: entry.first_name,
         lastName: entry.last_name,
         phone: entry.phone,
+        email: entry.email,
         address: entry.address,
         dateOfBirth: entry.date_of_birth ? new Date(entry.date_of_birth).toISOString().split('T')[0] : null,
         createdAt: entry.created_at,
