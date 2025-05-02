@@ -861,17 +861,43 @@ app.post('/api/visitors', async (req, res) => {
 // VISITOR DIRECTORY ENDPOINTS
 app.get('/api/directory', async (req, res) => {
   try {
-    // Get all directory entries from the database
-    const result = await db.query('SELECT * FROM visitor_directory ORDER BY last_name, first_name');
+    let result;
+    
+    // Check if querying by phone number
+    if (req.query.phone) {
+      // Search by phone number
+      result = await db.query(
+        'SELECT vd.*, COUNT(v.id) as visit_count, MAX(v.check_in_time) as last_visit ' +
+        'FROM visitor_directory vd ' +
+        'LEFT JOIN visitors v ON vd.phone = v.phone ' +
+        'WHERE vd.phone LIKE $1 ' +
+        'GROUP BY vd.id ' +
+        'ORDER BY vd.last_name, vd.first_name', 
+        [`%${req.query.phone}%`]
+      );
+      console.log(`Searching directory by phone: ${req.query.phone}`);
+    } else {
+      // Get all directory entries with visit counts
+      result = await db.query(
+        'SELECT vd.*, COUNT(v.id) as visit_count, MAX(v.check_in_time) as last_visit ' +
+        'FROM visitor_directory vd ' +
+        'LEFT JOIN visitors v ON vd.phone = v.phone ' +
+        'GROUP BY vd.id ' +
+        'ORDER BY vd.last_name, vd.first_name'
+      );
+    }
     
     // Transform database field names to match our API format
     const directoryEntries = result.rows.map(entry => ({
       id: entry.id.toString(),
       firstName: entry.first_name,
       lastName: entry.last_name,
+      email: entry.email,
       phone: entry.phone,
       address: entry.address,
       dateOfBirth: entry.date_of_birth ? new Date(entry.date_of_birth).toISOString().split('T')[0] : null,
+      visitCount: parseInt(entry.visit_count) || 0,
+      lastVisit: entry.last_visit ? new Date(entry.last_visit).toISOString() : null,
       createdAt: entry.created_at,
       updatedAt: entry.updated_at
     }));
@@ -881,7 +907,15 @@ app.get('/api/directory', async (req, res) => {
     console.error('Error fetching visitor directory:', error);
     
     // Fallback to in-memory data
-    res.json(inMemory.visitorDirectory);
+    if (req.query.phone) {
+      // Filter in-memory data by phone if querying
+      const filtered = inMemory.visitorDirectory.filter(entry => 
+        entry.phone && entry.phone.includes(req.query.phone)
+      );
+      res.json(filtered);
+    } else {
+      res.json(inMemory.visitorDirectory);
+    }
   }
 });
 

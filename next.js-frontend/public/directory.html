@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitor Directory - Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f8f9fa;
+        }
+        .navbar-brand {
+            font-weight: 700;
+        }
+        .sidebar {
+            width: 250px;
+            position: fixed;
+            top: 56px;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            padding: 20px 0;
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+        }
+        .sidebar-item {
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            color: #495057;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-item:hover {
+            background-color: #e9ecef;
+            color: #0d6efd;
+        }
+        .sidebar-item.active {
+            background-color: #e9ecef;
+            color: #0d6efd;
+            border-left-color: #0d6efd;
+            font-weight: 500;
+        }
+        .sidebar-item i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            margin-top: 56px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #e9ecef;
+            font-weight: 600;
+        }
+        .visitor-table th {
+            font-weight: 600;
+            color: #495057;
+        }
+        .btn-action {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        .visitor-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+        .visitor-filter {
+            width: 300px;
+        }
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 60px;
+            }
+            .sidebar-item span {
+                display: none;
+            }
+            .sidebar-item i {
+                margin-right: 0;
+            }
+            .main-content {
+                margin-left: 60px;
+            }
+        }
+        .badge-status {
+            font-size: 85%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <img src="/logo.svg" alt="Logo" width="30" height="30" class="d-inline-block align-text-top me-2">
+                Visitor Management
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/directory">Directory</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/analytics">Analytics</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <span class="navbar-text me-3">
+                        <i class="bi bi-person-circle me-1"></i>
+                        <span id="user-name">Admin User</span>
+                    </span>
+                    <button class="btn btn-outline-light btn-sm" id="logout-btn">
+                        <i class="bi bi-box-arrow-right me-1"></i>
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="sidebar d-none d-md-block">
+        <a href="/dashboard" class="sidebar-item">
+            <i class="bi bi-speedometer2"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="/directory" class="sidebar-item active">
+            <i class="bi bi-journal-text"></i>
+            <span>Visitor Directory</span>
+        </a>
+        <a href="/analytics" class="sidebar-item">
+            <i class="bi bi-graph-up"></i>
+            <span>Analytics</span>
+        </a>
+        <div class="border-top my-3"></div>
+        <a href="#" class="sidebar-item" id="sidebar-settings">
+            <i class="bi bi-gear"></i>
+            <span>Settings</span>
+        </a>
+        <a href="#" class="sidebar-item" id="sidebar-help">
+            <i class="bi bi-question-circle"></i>
+            <span>Help</span>
+        </a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-journal-text me-2"></i>Visitor Directory</h2>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addVisitorModal">
+                <i class="bi bi-person-plus me-2"></i>Add New Visitor
+            </button>
+        </div>
+        
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-people me-2"></i>Manage Visitor Records
+                </div>
+                <div class="visitor-filter">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="visitor-search" placeholder="Search visitors...">
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="visitor-controls">
+                    <div class="btn-group">
+                        <button class="btn btn-outline-secondary" id="visitor-export">
+                            <i class="bi bi-download me-1"></i>Export
+                        </button>
+                        <button class="btn btn-outline-secondary" id="visitor-print">
+                            <i class="bi bi-printer me-1"></i>Print
+                        </button>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm" id="visitor-filter">
+                            <option value="all" selected>All Visitors</option>
+                            <option value="new">New Visitors</option>
+                            <option value="frequent">Frequent Visitors</option>
+                        </select>
+                        <select class="form-select form-select-sm" id="visitor-sort">
+                            <option value="name" selected>Sort by Name</option>
+                            <option value="date">Sort by Last Visit</option>
+                            <option value="visits">Sort by # of Visits</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover visitor-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Contact</th>
+                                <th scope="col">Date of Birth</th>
+                                <th scope="col">Address</th>
+                                <th scope="col">Total Visits</th>
+                                <th scope="col">Last Visit</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="visitor-table-body">
+                            <!-- Visitor records will be inserted here dynamically -->
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Loading visitor directory...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <span class="text-muted" id="visitor-count">0 visitors found</span>
+                    </div>
+                    <nav aria-label="Visitor pagination">
+                        <ul class="pagination pagination-sm mb-0" id="visitor-pagination">
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#" tabindex="-1">Previous</a>
+                            </li>
+                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            <li class="page-item">
+                                <a class="page-link" href="#">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Visitor Modal -->
+    <div class="modal fade" id="addVisitorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Visitor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-visitor-form">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="add-first-name" class="form-label">First Name*</label>
+                                <input type="text" class="form-control" id="add-first-name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="add-last-name" class="form-label">Last Name*</label>
+                                <input type="text" class="form-control" id="add-last-name" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="add-email" class="form-label">Email Address*</label>
+                            <input type="email" class="form-control" id="add-email" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="add-phone" class="form-label">Phone Number*</label>
+                            <input type="tel" class="form-control" id="add-phone" placeholder="(555) 555-5555" required>
+                            <div class="form-text">Used to identify returning visitors.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="add-address" class="form-label">Address</label>
+                            <textarea class="form-control" id="add-address" rows="2"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="add-date-of-birth" class="form-label">Date of Birth</label>
+                            <input type="date" class="form-control" id="add-date-of-birth">
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="add-notify-check">
+                            <label class="form-check-label" for="add-notify-check">
+                                Send welcome email to visitor
+                            </label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="add-visitor-submit">Save Visitor</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Visitor Modal -->
+    <div class="modal fade" id="editVisitorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Visitor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-visitor-form">
+                        <input type="hidden" id="edit-visitor-id">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="edit-first-name" class="form-label">First Name*</label>
+                                <input type="text" class="form-control" id="edit-first-name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="edit-last-name" class="form-label">Last Name*</label>
+                                <input type="text" class="form-control" id="edit-last-name" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-email" class="form-label">Email Address*</label>
+                            <input type="email" class="form-control" id="edit-email" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-phone" class="form-label">Phone Number*</label>
+                            <input type="tel" class="form-control" id="edit-phone" placeholder="(555) 555-5555" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-address" class="form-label">Address</label>
+                            <textarea class="form-control" id="edit-address" rows="2"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit-date-of-birth" class="form-label">Date of Birth</label>
+                            <input type="date" class="form-control" id="edit-date-of-birth">
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <span class="text-muted">Total Visits: <span id="edit-total-visits">0</span></span>
+                            </div>
+                            <div>
+                                <span class="text-muted">Last Visit: <span id="edit-last-visit">N/A</span></span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger me-auto" id="delete-visitor-btn">Delete</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="edit-visitor-submit">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteVisitorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this visitor record?</p>
+                    <p class="mb-0"><strong id="delete-visitor-name"></strong></p>
+                    <input type="hidden" id="delete-visitor-id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for authentication
+            checkAuthentication();
+            
+            // Load visitor directory data
+            loadVisitorDirectory();
+            
+            // Set up search functionality
+            document.getElementById('visitor-search').addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                filterVisitors(searchTerm);
+            });
+            
+            // Set up filter dropdown
+            document.getElementById('visitor-filter').addEventListener('change', function() {
+                filterVisitorsByType(this.value);
+            });
+            
+            // Set up sort dropdown
+            document.getElementById('visitor-sort').addEventListener('change', function() {
+                sortVisitors(this.value);
+            });
+            
+            // Set up export button
+            document.getElementById('visitor-export').addEventListener('click', function() {
+                exportVisitorData();
+            });
+            
+            // Set up print button
+            document.getElementById('visitor-print').addEventListener('click', function() {
+                printVisitorData();
+            });
+            
+            // Set up add visitor form submission
+            document.getElementById('add-visitor-submit').addEventListener('click', function() {
+                addNewVisitor();
+            });
+            
+            // Set up edit visitor form submission
+            document.getElementById('edit-visitor-submit').addEventListener('click', function() {
+                updateVisitor();
+            });
+            
+            // Set up delete confirmation
+            document.getElementById('confirm-delete-btn').addEventListener('click', function() {
+                deleteVisitor();
+            });
+            
+            // Set up logout button
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                logout();
+            });
+        });
+        
+        // Array to store visitor data
+        let visitorData = [];
+        let filteredVisitors = [];
+        
+        // Current page settings
+        const pageSize = 10;
+        let currentPage = 1;
+        
+        // Check if user is authenticated
+        async function checkAuthentication() {
+            try {
+                const response = await fetch('/api/user');
+                
+                if (!response.ok) {
+                    // Redirect to login page if not authenticated
+                    window.location.href = '/';
+                    return;
+                }
+                
+                const userData = await response.json();
+                document.getElementById('user-name').textContent = userData.username;
+            } catch (error) {
+                console.error('Error checking authentication:', error);
+                window.location.href = '/';
+            }
+        }
+        
+        // Load visitor directory data
+        async function loadVisitorDirectory() {
+            try {
+                const response = await fetch('/api/directory');
+                
+                if (response.ok) {
+                    visitorData = await response.json();
+                    filteredVisitors = [...visitorData];
+                    
+                    // Update UI
+                    updateVisitorCount();
+                    renderVisitorTable();
+                    setupPagination();
+                } else {
+                    const errorData = await response.json();
+                    showError(`Failed to load visitor directory: ${errorData.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error loading visitor directory:', error);
+                showError('Could not connect to the server. Please try again later.');
+            }
+        }
+        
+        // Filter visitors by search term
+        function filterVisitors(searchTerm) {
+            if (!searchTerm) {
+                filteredVisitors = [...visitorData];
+            } else {
+                filteredVisitors = visitorData.filter(visitor => {
+                    const fullName = `${visitor.firstName} ${visitor.lastName}`.toLowerCase();
+                    return (
+                        fullName.includes(searchTerm) ||
+                        (visitor.email && visitor.email.toLowerCase().includes(searchTerm)) ||
+                        (visitor.phone && visitor.phone.includes(searchTerm)) ||
+                        (visitor.address && visitor.address.toLowerCase().includes(searchTerm))
+                    );
+                });
+            }
+            
+            currentPage = 1;
+            updateVisitorCount();
+            renderVisitorTable();
+            setupPagination();
+        }
+        
+        // Filter visitors by type
+        function filterVisitorsByType(filterType) {
+            switch (filterType) {
+                case 'new':
+                    filteredVisitors = visitorData.filter(visitor => visitor.visitCount === 1);
+                    break;
+                case 'frequent':
+                    filteredVisitors = visitorData.filter(visitor => visitor.visitCount > 1);
+                    break;
+                default:
+                    filteredVisitors = [...visitorData];
+                    break;
+            }
+            
+            currentPage = 1;
+            updateVisitorCount();
+            renderVisitorTable();
+            setupPagination();
+        }
+        
+        // Sort visitors
+        function sortVisitors(sortType) {
+            switch (sortType) {
+                case 'name':
+                    filteredVisitors.sort((a, b) => {
+                        const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+                        const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+                        return nameA.localeCompare(nameB);
+                    });
+                    break;
+                case 'date':
+                    filteredVisitors.sort((a, b) => {
+                        const dateA = a.lastVisit ? new Date(a.lastVisit) : new Date(0);
+                        const dateB = b.lastVisit ? new Date(b.lastVisit) : new Date(0);
+                        return dateB - dateA; // Most recent first
+                    });
+                    break;
+                case 'visits':
+                    filteredVisitors.sort((a, b) => {
+                        return (b.visitCount || 0) - (a.visitCount || 0); // Highest first
+                    });
+                    break;
+            }
+            
+            renderVisitorTable();
+        }
+        
+        // Update visitor count display
+        function updateVisitorCount() {
+            document.getElementById('visitor-count').textContent = `${filteredVisitors.length} visitors found`;
+        }
+        
+        // Render visitor table with current data
+        function renderVisitorTable() {
+            const tableBody = document.getElementById('visitor-table-body');
+            tableBody.innerHTML = '';
+            
+            // Calculate page boundaries
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, filteredVisitors.length);
+            
+            // If no visitors found
+            if (filteredVisitors.length === 0) {
+                const noDataRow = document.createElement('tr');
+                noDataRow.innerHTML = `
+                    <td colspan="8" class="text-center py-4">
+                        <i class="bi bi-search" style="font-size: 2rem; color: #dee2e6;"></i>
+                        <p class="mt-2 text-muted">No visitors found</p>
+                    </td>
+                `;
+                tableBody.appendChild(noDataRow);
+                return;
+            }
+            
+            // Add visitor rows
+            for (let i = startIndex; i < endIndex; i++) {
+                const visitor = filteredVisitors[i];
+                const visitorRow = document.createElement('tr');
+                
+                // Format the date of birth
+                let formattedDob = 'N/A';
+                if (visitor.dateOfBirth) {
+                    const dob = new Date(visitor.dateOfBirth);
+                    formattedDob = dob.toLocaleDateString();
+                }
+                
+                // Format last visit date
+                let formattedLastVisit = 'N/A';
+                if (visitor.lastVisit) {
+                    const lastVisit = new Date(visitor.lastVisit);
+                    formattedLastVisit = lastVisit.toLocaleDateString();
+                }
+                
+                visitorRow.innerHTML = `
+                    <td>${startIndex + i + 1}</td>
+                    <td>
+                        ${visitor.firstName} ${visitor.lastName}
+                        ${visitor.visitCount > 1 ? `<span class="badge bg-info ms-2 badge-status">Returning</span>` : ''}
+                    </td>
+                    <td>
+                        <div>${visitor.email || 'N/A'}</div>
+                        <div class="text-muted small">${visitor.phone || 'N/A'}</div>
+                    </td>
+                    <td>${formattedDob}</td>
+                    <td>${visitor.address || 'N/A'}</td>
+                    <td>${visitor.visitCount || 1}</td>
+                    <td>${formattedLastVisit}</td>
+                    <td>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary btn-action" onclick="editVisitor(${i})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger btn-action" onclick="confirmDeleteVisitor(${i})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                
+                tableBody.appendChild(visitorRow);
+            }
+        }
+        
+        // Set up pagination
+        function setupPagination() {
+            const paginationElement = document.getElementById('visitor-pagination');
+            const totalPages = Math.ceil(filteredVisitors.length / pageSize);
+            
+            let paginationHTML = '';
+            
+            // Previous button
+            paginationHTML += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="changePage(${currentPage - 1})">Previous</a>
+                </li>
+            `;
+            
+            // Page numbers
+            const maxPages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxPages / 2));
+            let endPage = Math.min(totalPages, startPage + maxPages - 1);
+            
+            if (endPage - startPage + 1 < maxPages) {
+                startPage = Math.max(1, endPage - maxPages + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `
+                    <li class="page-item ${i === currentPage ? 'active' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="changePage(${i})">${i}</a>
+                    </li>
+                `;
+            }
+            
+            // Next button
+            paginationHTML += `
+                <li class="page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="changePage(${currentPage + 1})">Next</a>
+                </li>
+            `;
+            
+            paginationElement.innerHTML = paginationHTML;
+        }
+        
+        // Change page
+        function changePage(page) {
+            const totalPages = Math.ceil(filteredVisitors.length / pageSize);
+            if (page < 1 || page > totalPages) return;
+            
+            currentPage = page;
+            renderVisitorTable();
+            setupPagination();
+        }
+        
+        // Add new visitor
+        async function addNewVisitor() {
+            const firstName = document.getElementById('add-first-name').value;
+            const lastName = document.getElementById('add-last-name').value;
+            const email = document.getElementById('add-email').value;
+            const phone = document.getElementById('add-phone').value;
+            const address = document.getElementById('add-address').value;
+            const dateOfBirth = document.getElementById('add-date-of-birth').value;
+            const sendNotification = document.getElementById('add-notify-check').checked;
+            
+            // Validate required fields
+            if (!firstName || !lastName || !email || !phone) {
+                alert('Please fill out all required fields.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/directory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        firstName,
+                        lastName,
+                        email,
+                        phone,
+                        address,
+                        dateOfBirth,
+                        sendNotification
+                    }),
+                });
+                
+                if (response.ok) {
+                    const newVisitor = await response.json();
+                    
+                    // Add to visitor data
+                    visitorData.push(newVisitor);
+                    filteredVisitors = [...visitorData];
+                    
+                    // Update table
+                    updateVisitorCount();
+                    renderVisitorTable();
+                    setupPagination();
+                    
+                    // Reset form and close modal
+                    document.getElementById('add-visitor-form').reset();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addVisitorModal'));
+                    modal.hide();
+                    
+                    // Show success message
+                    alert('Visitor added successfully!');
+                } else {
+                    const errorData = await response.json();
+                    alert(`Failed to add visitor: ${errorData.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error adding visitor:', error);
+                alert('An error occurred while adding the visitor. Please try again.');
+            }
+        }
+        
+        // Edit visitor
+        function editVisitor(index) {
+            const visitor = filteredVisitors[index];
+            
+            // Set form values
+            document.getElementById('edit-visitor-id').value = visitor.id;
+            document.getElementById('edit-first-name').value = visitor.firstName;
+            document.getElementById('edit-last-name').value = visitor.lastName;
+            document.getElementById('edit-email').value = visitor.email || '';
+            document.getElementById('edit-phone').value = visitor.phone || '';
+            document.getElementById('edit-address').value = visitor.address || '';
+            document.getElementById('edit-date-of-birth').value = visitor.dateOfBirth ? new Date(visitor.dateOfBirth).toISOString().split('T')[0] : '';
+            
+            // Set stats
+            document.getElementById('edit-total-visits').textContent = visitor.visitCount || 1;
+            
+            if (visitor.lastVisit) {
+                const lastVisit = new Date(visitor.lastVisit);
+                document.getElementById('edit-last-visit').textContent = lastVisit.toLocaleDateString();
+            } else {
+                document.getElementById('edit-last-visit').textContent = 'N/A';
+            }
+            
+            // Show modal
+            const editModal = new bootstrap.Modal(document.getElementById('editVisitorModal'));
+            editModal.show();
+        }
+        
+        // Update visitor
+        async function updateVisitor() {
+            const visitorId = document.getElementById('edit-visitor-id').value;
+            const firstName = document.getElementById('edit-first-name').value;
+            const lastName = document.getElementById('edit-last-name').value;
+            const email = document.getElementById('edit-email').value;
+            const phone = document.getElementById('edit-phone').value;
+            const address = document.getElementById('edit-address').value;
+            const dateOfBirth = document.getElementById('edit-date-of-birth').value;
+            
+            // Validate required fields
+            if (!firstName || !lastName || !email || !phone) {
+                alert('Please fill out all required fields.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/directory/${visitorId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        firstName,
+                        lastName,
+                        email,
+                        phone,
+                        address,
+                        dateOfBirth
+                    }),
+                });
+                
+                if (response.ok) {
+                    const updatedVisitor = await response.json();
+                    
+                    // Update visitor in data
+                    const index = visitorData.findIndex(v => v.id.toString() === visitorId.toString());
+                    if (index !== -1) {
+                        visitorData[index] = { ...visitorData[index], ...updatedVisitor };
+                        filteredVisitors = [...visitorData];
+                        
+                        // Update table
+                        renderVisitorTable();
+                    }
+                    
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editVisitorModal'));
+                    modal.hide();
+                    
+                    // Show success message
+                    alert('Visitor updated successfully!');
+                } else {
+                    const errorData = await response.json();
+                    alert(`Failed to update visitor: ${errorData.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error updating visitor:', error);
+                alert('An error occurred while updating the visitor. Please try again.');
+            }
+        }
+        
+        // Confirm delete visitor
+        function confirmDeleteVisitor(index) {
+            const visitor = filteredVisitors[index];
+            document.getElementById('delete-visitor-id').value = visitor.id;
+            document.getElementById('delete-visitor-name').textContent = `${visitor.firstName} ${visitor.lastName}`;
+            
+            // Show modal
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteVisitorModal'));
+            deleteModal.show();
+        }
+        
+        // Delete visitor
+        async function deleteVisitor() {
+            const visitorId = document.getElementById('delete-visitor-id').value;
+            
+            try {
+                const response = await fetch(`/api/directory/${visitorId}`, {
+                    method: 'DELETE',
+                });
+                
+                if (response.ok) {
+                    // Remove visitor from data
+                    const index = visitorData.findIndex(v => v.id.toString() === visitorId.toString());
+                    if (index !== -1) {
+                        visitorData.splice(index, 1);
+                        filteredVisitors = [...visitorData];
+                        
+                        // Update table
+                        updateVisitorCount();
+                        renderVisitorTable();
+                        setupPagination();
+                    }
+                    
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteVisitorModal'));
+                    modal.hide();
+                    
+                    // Show success message
+                    alert('Visitor deleted successfully!');
+                } else {
+                    const errorData = await response.json();
+                    alert(`Failed to delete visitor: ${errorData.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error deleting visitor:', error);
+                alert('An error occurred while deleting the visitor. Please try again.');
+            }
+        }
+        
+        // Export visitor data as CSV
+        function exportVisitorData() {
+            if (filteredVisitors.length === 0) {
+                alert('No data to export.');
+                return;
+            }
+            
+            // Create CSV content
+            const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Address', 'Date of Birth', 'Total Visits', 'Last Visit'];
+            const csvContent = [
+                headers.join(','),
+                ...filteredVisitors.map(visitor => {
+                    const formattedDob = visitor.dateOfBirth ? new Date(visitor.dateOfBirth).toLocaleDateString() : 'N/A';
+                    const formattedLastVisit = visitor.lastVisit ? new Date(visitor.lastVisit).toLocaleDateString() : 'N/A';
+                    
+                    return [
+                        visitor.firstName,
+                        visitor.lastName,
+                        visitor.email || '',
+                        visitor.phone || '',
+                        (visitor.address || '').replace(/,/g, ' '), // Remove commas from address
+                        formattedDob,
+                        visitor.visitCount || 1,
+                        formattedLastVisit
+                    ].join(',');
+                })
+            ].join('\n');
+            
+            // Create download link
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `visitor_directory_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Print visitor data
+        function printVisitorData() {
+            if (filteredVisitors.length === 0) {
+                alert('No data to print.');
+                return;
+            }
+            
+            // Create a printable version of the visitor list
+            const printWindow = window.open('', '_blank');
+            
+            // Create HTML content
+            let printContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Visitor Directory</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h1 { text-align: center; margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+                        th { background-color: #f2f2f2; }
+                        .print-date { text-align: right; margin-bottom: 20px; font-size: 12px; }
+                        @media print {
+                            .no-print { display: none; }
+                            body { margin: 0; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="no-print" style="padding: 10px; text-align: center;">
+                        <button onclick="window.print()">Print</button>
+                        <button onclick="window.close()">Close</button>
+                    </div>
+                    <h1>Visitor Directory</h1>
+                    <div class="print-date">Generated on ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Contact</th>
+                                <th>Address</th>
+                                <th>Date of Birth</th>
+                                <th>Last Visit</th>
+                                <th>Total Visits</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            // Add rows
+            filteredVisitors.forEach((visitor, index) => {
+                const formattedDob = visitor.dateOfBirth ? new Date(visitor.dateOfBirth).toLocaleDateString() : 'N/A';
+                const formattedLastVisit = visitor.lastVisit ? new Date(visitor.lastVisit).toLocaleDateString() : 'N/A';
+                
+                printContent += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${visitor.firstName} ${visitor.lastName}</td>
+                        <td>
+                            ${visitor.email || 'N/A'}<br>
+                            ${visitor.phone || 'N/A'}
+                        </td>
+                        <td>${visitor.address || 'N/A'}</td>
+                        <td>${formattedDob}</td>
+                        <td>${formattedLastVisit}</td>
+                        <td>${visitor.visitCount || 1}</td>
+                    </tr>
+                `;
+            });
+            
+            printContent += `
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+            
+            printWindow.document.open();
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+        }
+        
+        // Show error message
+        function showError(message) {
+            const tableBody = document.getElementById('visitor-table-body');
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-4">
+                        <div class="alert alert-danger mb-0">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            ${message}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        // Logout function
+        async function logout() {
+            try {
+                const response = await fetch('/api/logout', {
+                    method: 'POST',
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    alert('Failed to logout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error during logout:', error);
+                alert('An error occurred during logout. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>
