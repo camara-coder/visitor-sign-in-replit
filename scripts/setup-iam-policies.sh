@@ -3,6 +3,10 @@
 # Script to set up IAM policies for CodePipeline deployment
 set -e
 
+# Import AWS SSO helper functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+source "${SCRIPT_DIR}/aws-sso-helper.sh"
+
 # Configuration
 APP_NAME="visitor-sign-in-app"
 REGION="us-east-1"
@@ -21,11 +25,8 @@ if ! command -v aws &> /dev/null; then
     exit 1
 fi
 
-# Check if AWS is configured
-if ! aws sts get-caller-identity &> /dev/null; then
-    echo -e "${RED}AWS CLI is not configured. Please run 'aws configure' first.${NC}"
-    exit 1
-fi
+# Authenticate with AWS (handles both standard credentials and SSO)
+check_aws_auth || exit 1
 
 # Prompt for configuration values
 read -p "Enter application name [$APP_NAME]: " input

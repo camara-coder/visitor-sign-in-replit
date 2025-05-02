@@ -2,6 +2,13 @@
 
 # Script to deploy the CodePipeline CloudFormation stack
 
+# Import AWS SSO helper functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+source "${SCRIPT_DIR}/aws-sso-helper.sh"
+
+# Authenticate with AWS (handles both standard credentials and SSO)
+check_aws_auth || exit 1
+
 # Set default values
 APP_NAME="visitor-sign-in-app"
 ENV_NAME="production"
