@@ -604,17 +604,40 @@ app.put('/api/events/:id/enable', async (req, res) => {
 // VISITOR MANAGEMENT ENDPOINTS
 app.get('/api/visitors', async (req, res) => {
   const eventId = req.query.eventId;
+  const phone = req.query.phone;
+  const email = req.query.email;
   
   try {
-    let query = 'SELECT * FROM visitors';
+    let query = 'SELECT v.*, e.title as event_name FROM visitors v LEFT JOIN events e ON v.event_id = e.id';
     let params = [];
+    let whereClauseAdded = false;
     
     if (eventId) {
-      query += ' WHERE event_id = $1';
+      query += ' WHERE v.event_id = $1';
       params.push(eventId);
+      whereClauseAdded = true;
     }
     
-    query += ' ORDER BY check_in_time DESC';
+    if (phone) {
+      if (whereClauseAdded) {
+        query += ' AND v.phone = $' + (params.length + 1);
+      } else {
+        query += ' WHERE v.phone = $1';
+        whereClauseAdded = true;
+      }
+      params.push(phone);
+    }
+    
+    if (email) {
+      if (whereClauseAdded) {
+        query += ' AND v.email = $' + (params.length + 1);
+      } else {
+        query += ' WHERE v.email = $1';
+      }
+      params.push(email);
+    }
+    
+    query += ' ORDER BY v.check_in_time DESC';
     
     const result = await db.query(query, params);
     
@@ -626,7 +649,9 @@ app.get('/api/visitors', async (req, res) => {
       email: visitor.email,
       phone: visitor.phone,
       address: visitor.address,
+      dateOfBirth: visitor.date_of_birth ? new Date(visitor.date_of_birth).toISOString().split('T')[0] : null,
       eventId: visitor.event_id.toString(),
+      eventName: visitor.event_name,
       checkInTime: visitor.check_in_time,
       status: visitor.status,
       sendUpdates: visitor.send_updates
@@ -637,12 +662,30 @@ app.get('/api/visitors', async (req, res) => {
     console.error('Error fetching visitors:', error);
     
     // Fallback to in-memory data
+    let filteredVisitors = [...inMemory.visitors];
+    
     if (eventId) {
-      const eventVisitors = inMemory.visitors.filter(v => v.eventId === eventId);
-      res.json(eventVisitors);
-    } else {
-      res.json(inMemory.visitors);
+      filteredVisitors = filteredVisitors.filter(v => v.eventId === eventId);
     }
+    
+    if (phone) {
+      filteredVisitors = filteredVisitors.filter(v => v.phone === phone);
+    }
+    
+    if (email) {
+      filteredVisitors = filteredVisitors.filter(v => v.email === email);
+    }
+    
+    // Add event name
+    const visitorsWithEventName = filteredVisitors.map(visitor => {
+      const event = inMemory.events.find(e => e.id === visitor.eventId);
+      return {
+        ...visitor,
+        eventName: event ? event.title : 'Unknown Event'
+      };
+    });
+    
+    res.json(visitorsWithEventName);
   }
 });
 
@@ -818,6 +861,7 @@ app.post('/api/visitors', async (req, res) => {
       email,
       phone: phone || '',
       address: address || '',
+      dateOfBirth: dateOfBirth || null,
       eventId,
       checkInTime: new Date().toISOString(),
       status: 'checked-in',
