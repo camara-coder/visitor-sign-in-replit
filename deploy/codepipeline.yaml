@@ -41,6 +41,35 @@ Parameters:
     Type: String
     NoEcho: true
   
+  DatabaseName:
+    Description: Name of the PostgreSQL database
+    Type: String
+    Default: visitor_app
+    
+  DatabaseUsername:
+    Description: Username for the PostgreSQL database
+    Type: String
+    Default: postgres
+    
+  DatabasePort:
+    Description: Port for the PostgreSQL database
+    Type: String
+    Default: 5432
+  
+  EmailServiceEnabled:
+    Description: Enable email notifications for visitor sign-ins and event registrations
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+  
+  SessionSecret:
+    Description: Secret for session encryption
+    Type: String
+    NoEcho: true
+    Default: "visitor-app-session-secret-change-in-production"
+  
   ArtifactBucketName:
     Description: Name of the S3 bucket for build artifacts
     Type: String
@@ -110,6 +139,16 @@ Resources:
             Value: !Ref EnvironmentName
           - Name: DATABASE_PASSWORD
             Value: !Ref DatabasePassword
+          - Name: DATABASE_NAME
+            Value: !Ref DatabaseName
+          - Name: DATABASE_USERNAME
+            Value: !Ref DatabaseUsername
+          - Name: DATABASE_PORT
+            Value: !Ref DatabasePort
+          - Name: SESSION_SECRET
+            Value: !Ref SessionSecret
+          - Name: EMAIL_SERVICE_ENABLED
+            Value: !Ref EmailServiceEnabled
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec.yml
