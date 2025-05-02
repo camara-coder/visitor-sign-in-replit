@@ -695,9 +695,9 @@ app.post('/api/visitors', async (req, res) => {
         // Add to directory if not already present and has a phone number
         await db.query(
           `INSERT INTO visitor_directory 
-           (first_name, last_name, phone, address, date_of_birth, created_at, updated_at) 
-           VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-          [firstName, lastName, phone, address || '', dateOfBirth || null]
+           (first_name, last_name, email, phone, address, date_of_birth, created_at, updated_at) 
+           VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          [firstName, lastName, email, phone, address || '', dateOfBirth || null]
         );
         
         console.log('Added new visitor to directory:', `${firstName} ${lastName}`);
@@ -707,10 +707,10 @@ app.post('/api/visitors', async (req, res) => {
     // Insert new visitor into the database
     const result = await db.query(
       `INSERT INTO visitors 
-       (first_name, last_name, email, phone, address, event_id, send_updates) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+       (first_name, last_name, email, phone, address, date_of_birth, event_id, send_updates) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
        RETURNING *`,
-      [firstName, lastName, email, phone || '', address || '', eventId, !!sendUpdates]
+      [firstName, lastName, email, phone || '', address || '', dateOfBirth || null, eventId, !!sendUpdates]
     );
     
     const newVisitor = result.rows[0];
@@ -723,6 +723,7 @@ app.post('/api/visitors', async (req, res) => {
       email: newVisitor.email,
       phone: newVisitor.phone,
       address: newVisitor.address,
+      dateOfBirth: newVisitor.date_of_birth ? new Date(newVisitor.date_of_birth).toISOString().split('T')[0] : null,
       eventId: newVisitor.event_id.toString(),
       checkInTime: newVisitor.check_in_time,
       status: newVisitor.status,
