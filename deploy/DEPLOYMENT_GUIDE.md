@@ -14,10 +14,23 @@ Before you begin, ensure you have:
 
 ## Deployment Options
 
-The application can be deployed using two methods:
+The application can be deployed using three methods:
 
-1. **CodePipeline Deployment** - Continuous integration/continuous delivery (CI/CD) pipeline
-2. **Elastic Beanstalk Direct Deployment** - Manual deployment to Elastic Beanstalk
+1. **CodePipeline Deployment** - Continuous integration/continuous delivery (CI/CD) pipeline (requires IAM permissions)
+2. **Elastic Beanstalk Direct Deployment** - Manual deployment to Elastic Beanstalk (fewer permissions required)
+3. **EB CLI Deployment** - Simple deployment using EB CLI (minimal permissions required)
+
+### AWS Permissions Requirements
+
+Different deployment methods require different levels of AWS permissions:
+
+| Deployment Method | Permission Level | SSO Role |
+|-------------------|------------------|----------|
+| CodePipeline | High (IAM, CloudFormation, etc.) | AdministratorAccess |
+| EB Direct | Medium (Elastic Beanstalk, RDS) | PowerUserAccess |
+| EB CLI | Low (only Elastic Beanstalk) | Custom with EB permissions |
+
+If you encounter permission errors during deployment, see the [Troubleshooting Guide](TROUBLESHOOTING.md) for solutions.
 
 ## Option 1: CodePipeline Deployment (Recommended)
 
@@ -103,6 +116,28 @@ After the main deployment is complete, deploy the CloudWatch resources for sched
 cd scripts
 ./setup-scheduled-events.sh
 ```
+
+## Option 3: EB CLI Deployment (Minimal Permissions)
+
+This option uses our simplified script to deploy directly with EB CLI, requiring fewer AWS permissions.
+
+### Step 1: Run the EB Direct Deployment Script
+
+```bash
+cd scripts
+./deploy-eb-direct.sh
+```
+
+This script will:
+1. Initialize the Elastic Beanstalk environment
+2. Configure the application settings
+3. Deploy the application with a PostgreSQL database
+4. Provide deployment information and credentials
+
+This approach is recommended if:
+- You're using AWS SSO with PowerUserAccess or similar roles
+- You don't have permissions to create IAM roles
+- You want a simpler deployment without CI/CD
 
 ## Verifying the Deployment
 

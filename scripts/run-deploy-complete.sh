@@ -19,6 +19,15 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Check for required AWS permissions
+echo -e "${YELLOW}Checking AWS permissions...${NC}"
+"$SCRIPT_DIR/check-aws-permissions.sh"
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Permission check failed. See deploy/TROUBLESHOOTING.md for solutions.${NC}"
+    exit 1
+fi
+
 # Now run the actual setup script
 echo -e "${YELLOW}Running Complete Deployment...${NC}"
 "$SCRIPT_DIR/deploy-complete.sh"
