@@ -1078,6 +1078,7 @@ app.post('/api/directory', async (req, res) => {
         firstName,
         lastName,
         phone,
+        email: email || null,
         address: address || '',
         dateOfBirth: dateOfBirth || null,
         createdAt: new Date().toISOString(),
@@ -1100,7 +1101,7 @@ app.post('/api/directory', async (req, res) => {
 
 app.put('/api/directory/:id', async (req, res) => {
   const directoryId = req.params.id;
-  const { firstName, lastName, phone, address, dateOfBirth } = req.body;
+  const { firstName, lastName, phone, address, dateOfBirth, email } = req.body;
   
   // Validate required fields
   if (!firstName || !lastName || !phone) {
@@ -1132,10 +1133,10 @@ app.put('/api/directory/:id', async (req, res) => {
     // Update the entry in the database
     const result = await db.query(
       `UPDATE visitor_directory 
-       SET first_name = $1, last_name = $2, phone = $3, address = $4, date_of_birth = $5, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $6 
+       SET first_name = $1, last_name = $2, phone = $3, email = $4, address = $5, date_of_birth = $6, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $7 
        RETURNING *`,
-      [firstName, lastName, phone, address || '', dateOfBirth || null, directoryId]
+      [firstName, lastName, phone, email || null, address || '', dateOfBirth || null, directoryId]
     );
     
     const updatedEntry = result.rows[0];
@@ -1146,6 +1147,7 @@ app.put('/api/directory/:id', async (req, res) => {
       firstName: updatedEntry.first_name,
       lastName: updatedEntry.last_name,
       phone: updatedEntry.phone,
+      email: updatedEntry.email,
       address: updatedEntry.address,
       dateOfBirth: updatedEntry.date_of_birth ? new Date(updatedEntry.date_of_birth).toISOString().split('T')[0] : null,
       createdAt: updatedEntry.created_at,
@@ -1181,6 +1183,7 @@ app.put('/api/directory/:id', async (req, res) => {
         firstName,
         lastName,
         phone,
+        email: email || null,
         address: address || '',
         dateOfBirth: dateOfBirth || null,
         updatedAt: new Date().toISOString()
