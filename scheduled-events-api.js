@@ -262,8 +262,7 @@ router.get('/', async (req, res) => {
         SELECT DISTINCT se.*
         FROM scheduled_events se
         LEFT JOIN scheduled_event_instances sei ON se.id = sei.scheduled_event_id
-        WHERE se.start_date > NOW() 
-           OR (se.is_recurring = true AND sei.start_date > NOW())
+        WHERE sei.start_date > NOW() OR se.start_date > NOW()
         ORDER BY se.start_date ASC
       `;
     } else {
@@ -274,7 +273,20 @@ router.get('/', async (req, res) => {
     const result = await db.query(query, params);
     
     // Transform data
-    const events = result.rows.map(formatEventData);
+    let events = result.rows.map(formatEventData);
+    
+    // If future=true or we're fetching for a specific user, include event instances
+    if (req.query.future === 'true' || req.query.userId) {
+      // Fetch instances for each event
+      for (let i = 0; i < events.length; i++) {
+        const instancesResult = await db.query(
+          'SELECT * FROM scheduled_event_instances WHERE scheduled_event_id = $1 ORDER BY start_date ASC',
+          [events[i].id]
+        );
+        
+        events[i].instances = instancesResult.rows.map(formatEventInstance);
+      }
+    }
     
     res.json(events);
   } catch (error) {
@@ -390,11 +402,9 @@ router.put('/:id', checkAuth, async (req, res) => {
       originalEvent.recurrence_type !== updatedEvent.recurrence_type ||
       originalEvent.recurrence_interval !== updatedEvent.recurrence_interval ||
       JSON.stringify(originalEvent.recurrence_days) !== JSON.stringify(updatedEvent.recurrence_days) ||
-      originalEvent.recurrence_end_date !== updatedEvent.recurrence_end_date ||
-      originalEvent.start_date !== updatedEvent.start_date ||
-      originalEvent.end_date !== updatedEvent.end_date
+      originalEvent.recurrence_end_date !== updatedEvent.recurrence_end_date
     ) {
-      // Delete future instances
+      // If recurrence pattern changed, regenerate all future instances
       await db.query(
         'DELETE FROM scheduled_event_instances WHERE scheduled_event_id = $1 AND start_date > NOW()',
         [eventId]
@@ -402,6 +412,44 @@ router.put('/:id', checkAuth, async (req, res) => {
       
       // Regenerate instances
       await generateEventInstances(eventId);
+    } else if (
+      originalEvent.start_date.toISOString() !== updatedEvent.start_date.toISOString() ||
+      originalEvent.end_date.toISOString() !== updatedEvent.end_date.toISOString()
+    ) {
+      // Only start_date or end_date changed, update the existing instances
+      
+      // Calculate the duration difference in milliseconds
+      const originalStart = new Date(originalEvent.start_date);
+      const originalEnd = new Date(originalEvent.end_date);
+      const updatedStart = new Date(updatedEvent.start_date);
+      const updatedEnd = new Date(updatedEvent.end_date);
+      
+      const startDiff = updatedStart.getTime() - originalStart.getTime();
+      const endDiff = updatedEnd.getTime() - originalEnd.getTime();
+      
+      // Get future instances
+      const futureInstancesResult = await db.query(
+        'SELECT * FROM scheduled_event_instances WHERE scheduled_event_id = $1 AND start_date > NOW()',
+        [eventId]
+      );
+      
+      // Update each instance
+      for (const instance of futureInstancesResult.rows) {
+        const instanceStart = new Date(instance.start_date);
+        const instanceEnd = new Date(instance.end_date);
+        
+        // Apply the same time shifts
+        const newInstanceStart = new Date(instanceStart.getTime() + startDiff);
+        const newInstanceEnd = new Date(instanceEnd.getTime() + endDiff);
+        
+        // Update the instance
+        await db.query(
+          `UPDATE scheduled_event_instances 
+           SET start_date = $1, end_date = $2
+           WHERE id = $3`,
+          [newInstanceStart, newInstanceEnd, instance.id]
+        );
+      }
     }
     
     // Commit transaction
