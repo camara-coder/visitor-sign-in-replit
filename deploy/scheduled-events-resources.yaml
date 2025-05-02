@@ -1,0 +1,135 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Visitor Sign-In Application Scheduled Events Module'
+
+Parameters:
+  AppName:
+    Description: Name of the application
+    Type: String
+    Default: visitor-sign-in-app
+  
+  EnvironmentName:
+    Description: Name of the environment
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+  
+  DatabaseSecurityGroupId:
+    Description: Security Group ID for the RDS database
+    Type: String
+  
+  EventsTableName:
+    Description: Name of the DynamoDB table for events (if using DynamoDB)
+    Type: String
+    Default: visitor-app-events
+  
+  CreateCloudWatchAlarms:
+    Description: Whether to create CloudWatch alarms
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+Conditions:
+  CreateAlarms: !Equals [!Ref CreateCloudWatchAlarms, 'true']
+
+Resources:
+  # CloudWatch Logs for Scheduled Events
+  ScheduledEventsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AppName}-${EnvironmentName}-scheduled-events"
+      RetentionInDays: 30
+
+  # CloudWatch Alarm for Scheduled Events Errors
+  ScheduledEventsErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateAlarms
+    Properties:
+      AlarmName: !Sub "${AppName}-${EnvironmentName}-scheduled-events-errors"
+      AlarmDescription: "Alarm for errors in scheduled events module"
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub "${AppName}-${EnvironmentName}-scheduled-events"
+      TreatMissingData: notBreaching
+  
+  # IAM Role for EventBridge access
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEventBridgeFullAccess
+      Policies:
+        - PolicyName: EventBridgeExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt ScheduledEventsLogGroup.Arn
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: "*"
+
+  # EventBridge Rule for Daily Event Processing
+  DailyEventProcessingRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${AppName}-${EnvironmentName}-daily-event-processing"
+      Description: "Rule to process scheduled events daily"
+      ScheduleExpression: "cron(0 0 * * ? *)" # Run at midnight every day
+      State: ENABLED
+      Targets:
+        - Id: ProcessDailyEvents
+          Arn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AppName}-${EnvironmentName}-process-daily-events"
+          RoleArn: !GetAtt EventBridgeRole.Arn
+
+  # Parameter Store for Scheduled Events Configuration
+  ScheduledEventsConfigParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AppName}/${EnvironmentName}/scheduled-events-config"
+      Type: String
+      Value: '{"enableNotifications":true,"daysInAdvanceForReminders":1,"eventReminderBatchSize":100}'
+      Description: "Configuration for scheduled events module"
+      Tags:
+        Application: !Ref AppName
+        Environment: !Ref EnvironmentName
+
+Outputs:
+  LogGroupName:
+    Description: "Name of the CloudWatch Logs group for scheduled events"
+    Value: !Ref ScheduledEventsLogGroup
+  
+  EventBridgeRoleArn:
+    Description: "ARN of the IAM role for EventBridge"
+    Value: !GetAtt EventBridgeRole.Arn
+  
+  DailyEventProcessingRuleArn:
+    Description: "ARN of the EventBridge rule for daily event processing"
+    Value: !GetAtt DailyEventProcessingRule.Arn
+  
+  ScheduledEventsConfigParamName:
+    Description: "Name of the Parameter Store parameter for scheduled events configuration"
+    Value: !Ref ScheduledEventsConfigParam

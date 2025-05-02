@@ -54,6 +54,11 @@ Before starting, ensure you have:
    - Elastic Beanstalk application and environment names
    - S3 artifact bucket name
    - Database password
+   - Database name (default: visitor_app)
+   - Database username (default: postgres)
+   - Database port (default: 5432)
+   - Email service enabled (default: true)
+   - Session secret
 
    The script will:
    - Create an S3 bucket for build artifacts
@@ -63,7 +68,19 @@ Before starting, ensure you have:
      - CodePipeline pipeline
      - IAM roles (if not created already)
 
-2. **Note the Outputs**:
+2. **Deploy the Scheduled Events Resources**:
+   ```bash
+   cd scripts
+   ./setup-scheduled-events.sh
+   ```
+   
+   This script will deploy additional resources needed for the scheduled events module:
+   - CloudWatch Logs for scheduled events
+   - CloudWatch Alarms for monitoring
+   - EventBridge rules for recurring event processing
+   - Parameter Store configurations
+
+3. **Note the Outputs**:
    After the stack is created, the script will display:
    - The CodeCommit repository URL
    - The CodePipeline console URL
