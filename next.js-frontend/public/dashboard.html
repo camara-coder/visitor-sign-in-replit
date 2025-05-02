@@ -133,6 +133,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="/schedule">
+                        <i class="bi bi-calendar-plus me-2"></i> Event Scheduler
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="#visitors">
                         <i class="bi bi-people me-2"></i> Visitor List
                     </a>
@@ -326,6 +331,48 @@
                 </div>
             </div>
             
+            <!-- Scheduled Events Section -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Scheduled Events</h5>
+                    <a href="/schedule" class="btn btn-sm btn-primary">Manage Schedule</a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Upcoming Events</h6>
+                            <div id="upcoming-events-list" class="list-group">
+                                <div class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="text-muted mt-2">Loading scheduled events...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Event Registration</h6>
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">New Event Scheduling Module</h5>
+                                    <p class="card-text">Create and manage recurring events with our new scheduling system:</p>
+                                    <ul>
+                                        <li>Daily, weekly, monthly, or yearly recurring events</li>
+                                        <li>Custom recurrence patterns</li>
+                                        <li>Visitor self-registration</li>
+                                        <li>Registration notifications</li>
+                                    </ul>
+                                    <div class="d-grid gap-2">
+                                        <a href="/schedule" class="btn btn-primary">Go to Event Scheduler</a>
+                                        <a href="/events.html" class="btn btn-outline-primary">View Public Events Page</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- QR Code Generator -->
             <div class="card" id="qr-code">
                 <div class="card-header">
@@ -406,6 +453,9 @@
                     
                     // Update past events table
                     updatePastEventsTable(events);
+
+                    // Load scheduled events
+                    loadScheduledEvents(userId);
                     
                     // Update QR code if there's an active event
                     if (currentEvent) {
@@ -896,6 +946,117 @@
                 
                 tbody.appendChild(tr);
             });
+        }
+        
+        // Load scheduled events from the new scheduling module
+        async function loadScheduledEvents(userId) {
+            const upcomingEventsList = document.getElementById('upcoming-events-list');
+            if (!upcomingEventsList) {
+                console.error('Upcoming events list element not found');
+                return;
+            }
+            
+            try {
+                // Fetch events with the user ID (if available)
+                const url = userId ? `/api/scheduled-events?userId=${userId}&future=true` : '/api/scheduled-events?future=true';
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    upcomingEventsList.innerHTML = `
+                        <div class="alert alert-warning">
+                            Failed to load scheduled events. Please try again later.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const events = await response.json();
+                
+                // Get all instances from these events
+                let allInstances = [];
+                events.forEach(event => {
+                    if (event.instances && event.instances.length > 0) {
+                        // Add event data to each instance for easier display
+                        const instancesWithEventData = event.instances.map(instance => ({
+                            ...instance,
+                            eventName: event.name,
+                            eventDescription: event.description,
+                            eventLocation: event.location,
+                        }));
+                        allInstances = [...allInstances, ...instancesWithEventData];
+                    }
+                });
+                
+                // Filter for future instances that are scheduled
+                const futureInstances = allInstances.filter(instance => 
+                    new Date(instance.startDate) > new Date() && 
+                    instance.status === 'scheduled'
+                );
+                
+                // Sort by start date
+                futureInstances.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+                
+                // Take only the next 5 instances
+                const nextFiveInstances = futureInstances.slice(0, 5);
+                
+                if (nextFiveInstances.length === 0) {
+                    upcomingEventsList.innerHTML = `
+                        <div class="alert alert-info">
+                            No upcoming scheduled events. <a href="/schedule" class="alert-link">Create an event</a> to get started.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Display the instances
+                let html = '';
+                nextFiveInstances.forEach(instance => {
+                    const startDate = new Date(instance.startDate);
+                    const endDate = new Date(instance.endDate);
+                    
+                    // Format date and time
+                    const formattedDate = startDate.toLocaleDateString([], {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    
+                    const formattedStartTime = startDate.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    const formattedEndTime = endDate.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    html += `
+                        <a href="/schedule" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">${instance.eventName}</h6>
+                                <small>${formattedDate}</small>
+                            </div>
+                            <p class="mb-1">
+                                <small><i class="bi bi-clock me-1"></i> ${formattedStartTime} - ${formattedEndTime}</small>
+                            </p>
+                            <small class="text-muted">
+                                <i class="bi bi-geo-alt me-1"></i> ${instance.eventLocation || 'No location specified'}
+                            </small>
+                        </a>
+                    `;
+                });
+                
+                upcomingEventsList.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading scheduled events:', error);
+                upcomingEventsList.innerHTML = `
+                    <div class="alert alert-danger">
+                        An error occurred while loading events. Please try again later.
+                    </div>
+                `;
+            }
         }
         
         // Copy an event
