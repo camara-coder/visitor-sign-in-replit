@@ -6,6 +6,7 @@ A comprehensive full-stack web application for visitor registration and event ma
 
 - **User Authentication**: Secure login and registration system
 - **Event Management**: Create, enable, and disable events
+- **Scheduled Events**: Create recurring events with flexible scheduling options
 - **Visitor Registration**: Simple sign-in form for visitors with validation
 - **QR Code Generation**: Generate QR codes linking to the sign-in page
 - **Real-time Dashboard**: Monitor visitor check-ins and event statistics
@@ -144,22 +145,35 @@ It's recommended to change these credentials after first login.
 - `GET /api/visitors`: Get all visitors (with optional eventId filter)
 - `POST /api/visitors`: Register new visitor
 
+### Scheduled Events
+- `GET /api/scheduled-events`: List all scheduled event templates
+- `POST /api/scheduled-events`: Create a new scheduled event template
+- `GET /api/scheduled-events/:id`: Get a specific scheduled event
+- `PUT /api/scheduled-events/:id`: Update a scheduled event
+- `DELETE /api/scheduled-events/:id`: Delete a scheduled event
+- `GET /api/scheduled-events/:id/instances`: List all instances of a scheduled event
+- `POST /api/scheduled-events/:id/instances/generate`: Generate instances for a date range
+- `POST /api/scheduled-events/:id/register`: Register a visitor for an event
+- `DELETE /api/scheduled-events/:id/register/:visitorId`: Cancel a visitor registration
+
 ## Usage Workflow
 
 1. **Admin Setup**:
    - Register or log in as an administrator
-   - Create a new event from the dashboard
+   - Create a new event from the dashboard or set up a recurring scheduled event
    - Generate and share the event QR code
 
 2. **Visitor Registration**:
    - Visitors scan the QR code or visit the sign-in page
    - Fill out and submit the registration form
    - Receive confirmation of successful registration
+   - For scheduled events, visitors can register in advance for upcoming events
 
 3. **Admin Monitoring**:
    - View real-time visitor check-ins on the dashboard
    - Analyze visitor data with the analytics tools
    - Manage events (enable/disable) as needed
+   - Review upcoming scheduled events and registrations
 
 ## Email Notifications
 

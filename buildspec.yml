@@ -22,6 +22,8 @@ phases:
       - cp -r server.js database.js schema.js email-service.js scheduled-events-api.js package.json package-lock.json next.js-frontend deploy_package/
       - cp -r node_modules deploy_package/
       - cp -r .ebextensions deploy_package/
+      - cp -r scripts deploy_package/
+      - cp -r deploy deploy_package/
       - cp Procfile deploy_package/
   
   post_build:
