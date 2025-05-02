@@ -4,9 +4,10 @@ const router = express.Router();
 
 // Middleware to check if user is authenticated
 const checkAuth = (req, res, next) => {
-  // For simplicity, we'll check if there's a userId in the request body
+  // For simplicity, we'll check if there's a userId in the request body or query
   // In a production environment, you would validate a JWT token or session
-  if (!req.body.userId && !req.query.userId) {
+  const userId = req.body?.userId || req.query?.userId;
+  if (!userId) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   next();
