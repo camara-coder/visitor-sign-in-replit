@@ -189,6 +189,52 @@
     </div>
   </div>
 
+  <!-- Batch Member Entry Modal -->
+  <div class="modal fade" id="batchMemberModal" tabindex="-1" aria-labelledby="batchMemberLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="batchMemberLabel">Add Multiple Members</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i> Enter one member per row with each field separated by commas (First Name, Last Name, Phone, Tags).
+            <strong>Example:</strong> John, Doe, (555) 123-4567, volunteer,donor
+          </div>
+          
+          <div class="form-group mb-3">
+            <label for="batchMemberData">Enter Member Data (CSV format)</label>
+            <textarea id="batchMemberData" class="form-control" rows="10" placeholder="First Name, Last Name, Phone, Tags"></textarea>
+          </div>
+          
+          <div id="batchPreview" class="d-none">
+            <h6>Preview (<span id="previewCount">0</span> members):</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered">
+                <thead>
+                  <tr>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Phone</th>
+                    <th>Tags</th>
+                  </tr>
+                </thead>
+                <tbody id="previewTable">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-info" id="previewBatchBtn">Preview</button>
+          <button type="button" class="btn btn-primary" id="saveBatchBtn">Save All Members</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap & jQuery Scripts -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
@@ -510,6 +556,24 @@
       return date.toISOString().split('T')[0];
     }
     
+    // Helper: Format phone number as (XXX) XXX-XXXX
+    function formatPhoneNumber(phoneNumber) {
+      // Strip all non-numeric characters
+      const cleaned = phoneNumber.replace(/\D/g, '');
+      
+      // Format as (XXX) XXX-XXXX
+      if (cleaned.length >= 10) {
+        return `(${cleaned.substring(0, 3)}) ${cleaned.substring(3, 6)}-${cleaned.substring(6, 10)}${cleaned.length > 10 ? cleaned.substring(10) : ''}`;
+      } else if (cleaned.length > 6) {
+        return `(${cleaned.substring(0, 3)}) ${cleaned.substring(3, 6)}-${cleaned.substring(6)}`;
+      } else if (cleaned.length > 3) {
+        return `(${cleaned.substring(0, 3)}) ${cleaned.substring(3)}`;
+      } else if (cleaned.length > 0) {
+        return `(${cleaned}`;
+      }
+      return '';
+    }
+    
     // Helper: Show alert message
     function showAlert(message, type = 'info') {
       const alertDiv = document.createElement('div');
@@ -546,6 +610,20 @@
       deleteMemberBtn.addEventListener('click', confirmDelete);
       confirmDeleteBtn.addEventListener('click', executeDelete);
       document.getElementById('logoutButton').addEventListener('click', logout);
+      
+      // Phone number formatting
+      phone.addEventListener('input', function(e) {
+        const cursorPosition = this.selectionStart;
+        const previousLength = this.value.length;
+        this.value = formatPhoneNumber(this.value);
+        
+        // Adjust cursor position to account for added formatting characters
+        const newLength = this.value.length;
+        const cursorAdjustment = newLength - previousLength;
+        if (cursorAdjustment > 0) {
+          this.setSelectionRange(cursorPosition + cursorAdjustment, cursorPosition + cursorAdjustment);
+        }
+      });
     }
     
     // Start the app
