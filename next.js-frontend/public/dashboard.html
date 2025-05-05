@@ -516,6 +516,35 @@
                         }
                     }
                 }
+                
+                // Fetch members count
+                try {
+                    const membersResponse = await fetch('/api/members');
+                    if (membersResponse.ok) {
+                        const members = await membersResponse.json();
+                        const totalMembersEl = document.getElementById('total-members');
+                        if (totalMembersEl) {
+                            totalMembersEl.textContent = members.length;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error fetching members:', error);
+                }
+                
+                // Fetch directory count
+                try {
+                    const directoryResponse = await fetch('/api/directory');
+                    if (directoryResponse.ok) {
+                        const directory = await directoryResponse.json();
+                        const directoryCountEl = document.getElementById('directory-count');
+                        if (directoryCountEl) {
+                            directoryCountEl.textContent = directory.length;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error fetching directory:', error);
+                }
+                
             } catch (error) {
                 console.error('Error loading dashboard data:', error);
             }
