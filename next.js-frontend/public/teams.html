@@ -772,12 +772,12 @@
           <div class="col-md-6 col-lg-4">
             <div class="card team-member-card">
               <div class="card-body d-flex align-items-center">
-                ${member.pictureUrl ? 
-                  `<img src="${member.pictureUrl}" alt="${member.firstName}" class="member-picture me-3">` : 
+                ${member.picture_url ? 
+                  `<img src="${member.picture_url}" alt="${member.first_name}" class="member-picture me-3">` : 
                   `<div class="empty-picture me-3"><i class="fas fa-user"></i></div>`
                 }
                 <div>
-                  <h6 class="mb-0">${member.firstName} ${member.lastName}</h6>
+                  <h6 class="mb-0">${member.first_name} ${member.last_name}</h6>
                   <p class="text-muted small mb-0">${member.phone || 'No phone'}</p>
                   <div class="mt-1">
                     ${member.tags && member.tags.length > 0 ? 
@@ -788,7 +788,7 @@
                 </div>
                 <button class="btn btn-sm btn-outline-danger ms-auto remove-member-btn" 
                         data-id="${member.id}" 
-                        data-name="${member.firstName} ${member.lastName}">
+                        data-name="${member.first_name} ${member.last_name}">
                   <i class="fas fa-times"></i>
                 </button>
               </div>
@@ -931,7 +931,7 @@
       members.forEach(member => {
         const option = document.createElement('option');
         option.value = member.id;
-        option.textContent = `${member.firstName} ${member.lastName}`;
+        option.textContent = `${member.first_name} ${member.last_name}`;
         teamDirector.appendChild(option);
       });
     }
@@ -1171,12 +1171,12 @@
         memberOption.className = `member-option ${isSelected ? 'selected' : ''}`;
         memberOption.setAttribute('data-id', member.id);
         memberOption.innerHTML = `
-          ${member.pictureUrl ? 
-            `<img src="${member.pictureUrl}" alt="${member.firstName}" class="member-picture">` : 
+          ${member.picture_url ? 
+            `<img src="${member.picture_url}" alt="${member.first_name}" class="member-picture">` : 
             `<div class="empty-picture"><i class="fas fa-user"></i></div>`
           }
           <div class="member-info">
-            <h6 class="mb-0">${member.firstName} ${member.lastName}</h6>
+            <h6 class="mb-0">${member.first_name} ${member.last_name}</h6>
             <p class="text-muted small mb-0">${member.phone || 'No phone'}</p>
           </div>
           <div class="ms-auto">
@@ -1231,12 +1231,12 @@
         const memberItem = document.createElement('div');
         memberItem.className = 'd-flex align-items-center mb-2 p-2 bg-light rounded';
         memberItem.innerHTML = `
-          ${member.pictureUrl ? 
-            `<img src="${member.pictureUrl}" alt="${member.firstName}" class="member-picture" style="width: 36px; height: 36px; border-radius: 18px; object-fit: cover; margin-right: 10px;">` : 
+          ${member.picture_url ? 
+            `<img src="${member.picture_url}" alt="${member.first_name}" class="member-picture" style="width: 36px; height: 36px; border-radius: 18px; object-fit: cover; margin-right: 10px;">` : 
             `<div class="empty-picture" style="width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin-right: 10px; background-color: #f0f0f0; color: #aaa;"><i class="fas fa-user"></i></div>`
           }
           <div class="flex-grow-1">
-            <h6 class="mb-0">${member.firstName} ${member.lastName}</h6>
+            <h6 class="mb-0">${member.first_name} ${member.last_name}</h6>
             <small class="text-muted">${member.phone || 'No phone'}</small>
           </div>
           <button type="button" class="btn btn-sm btn-outline-danger remove-selected-btn" data-id="${member.id}">
