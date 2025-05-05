@@ -58,29 +58,63 @@ fi
 # Check for existing deployment and offer option to update
 STACK_EXISTS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --region $REGION 2>/dev/null || echo "STACK_NOT_FOUND")
 if [[ $STACK_EXISTS != *"STACK_NOT_FOUND"* ]]; then
-    echo -e "${YELLOW}An existing deployment with stack name '$STACK_NAME' was found.${NC}"
-    echo -e "Would you like to update the existing deployment or create a new one?"
-    echo -e "  1. Update existing deployment"
-    echo -e "  2. Create new deployment (will require different stack name)"
-    echo -e "  3. Exit"
-    read -p "Enter your choice [1-3]: " update_choice
+    # Check if stack is in ROLLBACK_COMPLETE state (failed deployment)
+    STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --region $REGION --query "Stacks[0].StackStatus" --output text 2>/dev/null)
     
-    case $update_choice in
-        1)
-            echo -e "${YELLOW}Proceeding with update of existing deployment...${NC}"
-            ;;
-        2)
-            echo -e "${YELLOW}Creating new deployment...${NC}"
-            read -p "Enter a new CloudFormation stack name: " STACK_NAME
-            APP_NAME=${STACK_NAME%-pipeline}
-            EB_APP_NAME=$APP_NAME
-            ARTIFACT_BUCKET="${APP_NAME}-artifacts"
-            ;;
-        *)
-            echo -e "${YELLOW}Exiting deployment script.${NC}"
-            exit 0
-            ;;
-    esac
+    if [[ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]]; then
+        echo -e "${YELLOW}The existing stack '$STACK_NAME' is in ROLLBACK_COMPLETE state.${NC}"
+        echo -e "${YELLOW}This indicates a failed deployment. You need to delete it before redeploying.${NC}"
+        echo -e "Would you like to delete the failed stack and create a new one?"
+        echo -e "  1. Delete failed stack and continue with deployment"
+        echo -e "  2. Create new deployment with different stack name"
+        echo -e "  3. Exit"
+        read -p "Enter your choice [1-3]: " rollback_choice
+        
+        case $rollback_choice in
+            1)
+                echo -e "${YELLOW}Deleting failed stack '$STACK_NAME'...${NC}"
+                aws cloudformation delete-stack --stack-name $STACK_NAME --region $REGION
+                echo -e "${YELLOW}Waiting for stack deletion to complete...${NC}"
+                aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME --region $REGION
+                echo -e "${GREEN}Stack deleted successfully. Proceeding with new deployment...${NC}"
+                ;;
+            2)
+                echo -e "${YELLOW}Creating new deployment with different name...${NC}"
+                read -p "Enter a new CloudFormation stack name: " STACK_NAME
+                APP_NAME=${STACK_NAME%-pipeline}
+                EB_APP_NAME=$APP_NAME
+                ARTIFACT_BUCKET="${APP_NAME}-artifacts"
+                ;;
+            *)
+                echo -e "${YELLOW}Exiting deployment script.${NC}"
+                exit 0
+                ;;
+        esac
+    else
+        echo -e "${YELLOW}An existing deployment with stack name '$STACK_NAME' was found.${NC}"
+        echo -e "Would you like to update the existing deployment or create a new one?"
+        echo -e "  1. Update existing deployment"
+        echo -e "  2. Create new deployment (will require different stack name)"
+        echo -e "  3. Exit"
+        read -p "Enter your choice [1-3]: " update_choice
+        
+        case $update_choice in
+            1)
+                echo -e "${YELLOW}Proceeding with update of existing deployment...${NC}"
+                ;;
+            2)
+                echo -e "${YELLOW}Creating new deployment...${NC}"
+                read -p "Enter a new CloudFormation stack name: " STACK_NAME
+                APP_NAME=${STACK_NAME%-pipeline}
+                EB_APP_NAME=$APP_NAME
+                ARTIFACT_BUCKET="${APP_NAME}-artifacts"
+                ;;
+            *)
+                echo -e "${YELLOW}Exiting deployment script.${NC}"
+                exit 0
+                ;;
+        esac
+    fi
 fi
 
 # Step 1: Collect configuration
@@ -222,26 +256,55 @@ fi
 echo -e "${CYAN}== Step 3: Creating S3 bucket for artifacts ==${NC}"
 if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
     echo -e "${YELLOW}Creating S3 bucket: $ARTIFACT_BUCKET${NC}"
-    if aws s3 mb s3://$ARTIFACT_BUCKET --region $REGION; then
-        aws s3api put-bucket-versioning --bucket $ARTIFACT_BUCKET --versioning-configuration Status=Enabled
-        aws s3api put-bucket-encryption --bucket $ARTIFACT_BUCKET --server-side-encryption-configuration '{
-            "Rules": [
-                {
-                    "ApplyServerSideEncryptionByDefault": {
-                        "SSEAlgorithm": "AES256"
-                    }
-                }
-            ]
-        }'
-        echo -e "${GREEN}S3 bucket created successfully with versioning and encryption enabled!${NC}"
-    else
-        echo -e "${RED}Failed to create S3 bucket.${NC}"
-        echo -e "${YELLOW}Do you want to continue with the deployment? (y/n)${NC}"
-        read continue_anyway
-        if [[ $continue_anyway != "y" && $continue_anyway != "Y" ]]; then
-            echo -e "${RED}Deployment canceled.${NC}"
-            exit 1
+    
+    # Check if region is us-east-1 (special case for S3 buckets)
+    if [[ "$REGION" == "us-east-1" ]]; then
+        # For us-east-1, we need to use the create-bucket command without location constraint
+        if aws s3api create-bucket --bucket "$ARTIFACT_BUCKET" --region "$REGION"; then
+            echo -e "${GREEN}S3 bucket created successfully in us-east-1!${NC}"
+        else
+            echo -e "${RED}Failed to create S3 bucket.${NC}"
+            echo -e "${YELLOW}Do you want to continue with the deployment? (y/n)${NC}"
+            read continue_anyway
+            if [[ $continue_anyway != "y" && $continue_anyway != "Y" ]]; then
+                echo -e "${RED}Deployment canceled.${NC}"
+                exit 1
+            fi
         fi
+    else
+        # For other regions, use location constraint
+        if aws s3api create-bucket --bucket "$ARTIFACT_BUCKET" --region "$REGION" --create-bucket-configuration LocationConstraint="$REGION"; then
+            echo -e "${GREEN}S3 bucket created successfully in $REGION!${NC}"
+        else
+            echo -e "${RED}Failed to create S3 bucket.${NC}"
+            echo -e "${YELLOW}Do you want to continue with the deployment? (y/n)${NC}"
+            read continue_anyway
+            if [[ $continue_anyway != "y" && $continue_anyway != "Y" ]]; then
+                echo -e "${RED}Deployment canceled.${NC}"
+                exit 1
+            fi
+        fi
+    fi
+    
+    # Enable versioning and encryption on the bucket
+    if aws s3api put-bucket-versioning --bucket "$ARTIFACT_BUCKET" --versioning-configuration Status=Enabled; then
+        echo -e "${GREEN}Bucket versioning enabled.${NC}"
+    else
+        echo -e "${YELLOW}Failed to enable bucket versioning. Continuing anyway...${NC}"
+    fi
+    
+    if aws s3api put-bucket-encryption --bucket "$ARTIFACT_BUCKET" --server-side-encryption-configuration '{
+        "Rules": [
+            {
+                "ApplyServerSideEncryptionByDefault": {
+                    "SSEAlgorithm": "AES256"
+                }
+            }
+        ]
+    }'; then
+        echo -e "${GREEN}Bucket encryption enabled.${NC}"
+    else
+        echo -e "${YELLOW}Failed to enable bucket encryption. Continuing anyway...${NC}"
     fi
 else
     echo -e "${GREEN}S3 bucket already exists!${NC}"
