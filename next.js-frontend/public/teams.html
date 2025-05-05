@@ -720,21 +720,21 @@
         
         teamCard.innerHTML = `
           <div class="card team-card" data-id="${team.id}">
-            <div class="card-header ${!team.pictureUrl ? 'no-image' : ''}" 
-                 ${team.pictureUrl ? `style="background-image: url('${team.pictureUrl}')"` : ''}>
+            <div class="card-header ${!team.picture_url ? 'no-image' : ''}" 
+                 ${team.picture_url ? `style="background-image: url('${team.picture_url}')"` : ''}>
               <h5 class="team-name mb-0">${team.name}</h5>
             </div>
             <div class="card-body">
               <div class="director-info">
-                ${team.directorId ? 
+                ${team.director_id ? 
                   `<div class="d-flex align-items-center w-100">
-                    ${team.directorPicture ? 
-                      `<img src="${team.directorPicture}" alt="Director" class="director-picture">` : 
+                    ${team.director_picture ? 
+                      `<img src="${team.director_picture}" alt="Director" class="director-picture">` : 
                       `<div class="empty-picture"><i class="fas fa-user"></i></div>`
                     }
                     <div>
                       <span class="text-muted small">Team Director</span>
-                      <div class="fw-bold">${team.directorName || 'Unknown'}</div>
+                      <div class="fw-bold">${team.director_name || 'Unknown'}</div>
                     </div>
                   </div>` : 
                   `<div class="text-muted small fst-italic">No director assigned</div>`
@@ -818,20 +818,20 @@
             <i class="fas fa-edit me-1"></i> Edit Team
           </button>
         </div>
-        <div class="team-detail-header ${!team.pictureUrl ? 'no-image' : ''}" 
-             ${team.pictureUrl ? `style="background-image: url('${team.pictureUrl}')"` : ''}>
+        <div class="team-detail-header ${!team.picture_url ? 'no-image' : ''}" 
+             ${team.picture_url ? `style="background-image: url('${team.picture_url}')"` : ''}>
           <div class="content">
             <h1>${team.name}</h1>
             <p class="lead mb-4">${team.description || 'No description provided'}</p>
-            ${team.directorId ? 
+            ${team.director_id ? 
               `<div class="director-info">
-                ${team.directorPicture ? 
-                  `<img src="${team.directorPicture}" alt="Director" class="director-picture">` : 
+                ${team.director_picture ? 
+                  `<img src="${team.director_picture}" alt="Director" class="director-picture">` : 
                   `<div class="empty-picture"><i class="fas fa-user"></i></div>`
                 }
                 <div>
                   <span class="text-light opacity-75">Team Director</span>
-                  <h5 class="mb-0">${team.directorName || 'Unknown'}</h5>
+                  <h5 class="mb-0">${team.director_name || 'Unknown'}</h5>
                 </div>
               </div>` : 
               `<div class="director-info">
@@ -913,7 +913,7 @@
         return (
           team.name.toLowerCase().includes(searchTerm) || 
           (team.description && team.description.toLowerCase().includes(searchTerm)) ||
-          (team.directorName && team.directorName.toLowerCase().includes(searchTerm))
+          (team.director_name && team.director_name.toLowerCase().includes(searchTerm))
         );
       });
       
@@ -1097,8 +1097,8 @@
       teamId.value = team.id;
       teamName.value = team.name;
       teamDescription.value = team.description || '';
-      teamPictureUrl.value = team.pictureUrl || '';
-      teamDirector.value = team.directorId || '';
+      teamPictureUrl.value = team.picture_url || '';
+      teamDirector.value = team.director_id || '';
       deleteTeamBtn.classList.remove('d-none');
       currentTeamId = team.id;
       
@@ -1276,8 +1276,8 @@
       const teamData = {
         name: teamName.value.trim(),
         description: teamDescription.value.trim() || null,
-        pictureUrl: teamPictureUrl.value.trim() || null,
-        directorId: teamDirector.value || null,
+        picture_url: teamPictureUrl.value.trim() || null,
+        director_id: teamDirector.value || null,
         userId: JSON.parse(localStorage.getItem('userData')).id
       };
       
