@@ -35,9 +35,16 @@ if type check_aws_auth &>/dev/null; then
     check_aws_auth || exit 1
 else
     # If the function doesn't exist, let's check credentials directly
+    echo -e "${YELLOW}Checking AWS credentials...${NC}"
     if ! aws sts get-caller-identity &>/dev/null; then
         echo -e "${RED}AWS credentials not found or expired. Please configure AWS credentials.${NC}"
         exit 1
+    else
+        # Show the identity information for verification
+        echo -e "${GREEN}AWS credentials are valid.${NC}"
+        echo -e "${YELLOW}Using AWS Identity:${NC}"
+        aws sts get-caller-identity
+        echo ""
     fi
 fi
 
@@ -54,9 +61,10 @@ CODEPIPELINE_ROLE_NAME=${input:-"${APP_NAME}-codepipeline-role"}
 read -p "Enter CodeBuild role name [${APP_NAME}-codebuild-role]: " input
 CODEBUILD_ROLE_NAME=${input:-"${APP_NAME}-codebuild-role"}
 
-# Create temp directory for policy files
-TEMP_DIR="${ROOT_DIR}/tmp"
+# Create temp directory for policy files in current directory for better Windows compatibility
+TEMP_DIR="./temp_policies"
 mkdir -p "${TEMP_DIR}"
+echo -e "${YELLOW}Creating temporary policy files in ${TEMP_DIR}${NC}"
 
 # Create trust policy for CodePipeline
 echo -e "${YELLOW}Creating trust policy for CodePipeline...${NC}"
@@ -115,8 +123,9 @@ CODEBUILD_POLICY_FILE="${TEMP_DIR}/codebuild-policy.json"
 # Copy and update policy files
 if [ -f "${ROOT_DIR}/deploy/iam_policies/codepipeline-policy.json" ]; then
     cp "${ROOT_DIR}/deploy/iam_policies/codepipeline-policy.json" "${CODEPIPELINE_POLICY_FILE}"
-    sed -i "s/visitor-sign-in-app/$APP_NAME/g" "${CODEPIPELINE_POLICY_FILE}"
-    sed -i "s/visitor-app-artifacts/${APP_NAME}-artifacts/g" "${CODEPIPELINE_POLICY_FILE}"
+    # Use sed in a way that works on both Linux and Windows with MINGW64
+    sed -e "s/visitor-sign-in-app/$APP_NAME/g" -e "s/visitor-app-artifacts/${APP_NAME}-artifacts/g" "${CODEPIPELINE_POLICY_FILE}" > "${TEMP_DIR}/temp_cp_policy.json"
+    mv "${TEMP_DIR}/temp_cp_policy.json" "${CODEPIPELINE_POLICY_FILE}"
 else
     echo -e "${RED}CodePipeline policy file not found. Creating a basic policy...${NC}"
     # Create a basic CodePipeline policy
@@ -144,8 +153,9 @@ fi
 
 if [ -f "${ROOT_DIR}/deploy/iam_policies/codebuild-policy.json" ]; then
     cp "${ROOT_DIR}/deploy/iam_policies/codebuild-policy.json" "${CODEBUILD_POLICY_FILE}"
-    sed -i "s/visitor-sign-in-app/$APP_NAME/g" "${CODEBUILD_POLICY_FILE}"
-    sed -i "s/visitor-app-artifacts/${APP_NAME}-artifacts/g" "${CODEBUILD_POLICY_FILE}"
+    # Use sed in a way that works on both Linux and Windows with MINGW64
+    sed -e "s/visitor-sign-in-app/$APP_NAME/g" -e "s/visitor-app-artifacts/${APP_NAME}-artifacts/g" "${CODEBUILD_POLICY_FILE}" > "${TEMP_DIR}/temp_cb_policy.json"
+    mv "${TEMP_DIR}/temp_cb_policy.json" "${CODEBUILD_POLICY_FILE}"
 else
     echo -e "${RED}CodeBuild policy file not found. Creating a basic policy...${NC}"
     # Create a basic CodeBuild policy
