@@ -252,8 +252,81 @@
             
             <!-- Calendar View (initially hidden) -->
             <div id="calendarView" style="display: none;">
-              <div id="scheduleCalendar">
-                <!-- Calendar will be rendered here -->
+              <div class="row mb-3">
+                <div class="col-lg-3">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Filters</h5>
+                    </div>
+                    <div class="card-body">
+                      <!-- Search -->
+                      <div class="mb-3">
+                        <label for="calendarSearch" class="form-label">Search</label>
+                        <div class="input-group">
+                          <input type="text" class="form-control" id="calendarSearch" placeholder="Search teams or members...">
+                          <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn">
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- Team Selection -->
+                      <div class="mb-3">
+                        <label class="form-label">Teams</label>
+                        <div class="team-filter-list" id="teamFilterList">
+                          <!-- Team checkboxes will be populated here -->
+                          <div class="d-flex justify-content-between mb-2">
+                            <button class="btn btn-sm btn-outline-primary" id="selectAllTeamsBtn">Select All</button>
+                            <button class="btn btn-sm btn-outline-secondary" id="clearAllTeamsBtn">Clear All</button>
+                          </div>
+                          <div id="teamCheckboxes">
+                            <!-- Dynamically populated -->
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Date Range Navigation -->
+                      <div class="mb-3">
+                        <label class="form-label">Date Range</label>
+                        <div class="btn-group w-100 mb-2">
+                          <button type="button" class="btn btn-outline-primary" id="prevBtn">
+                            <i class="fas fa-chevron-left"></i>
+                          </button>
+                          <button type="button" class="btn btn-outline-primary" id="todayBtn">Today</button>
+                          <button type="button" class="btn btn-outline-primary" id="nextBtn">
+                            <i class="fas fa-chevron-right"></i>
+                          </button>
+                        </div>
+                        
+                        <div class="btn-group w-100">
+                          <button type="button" class="btn btn-outline-secondary view-option active" data-view="dayGridMonth">Month</button>
+                          <button type="button" class="btn btn-outline-secondary view-option" data-view="timeGridWeek">Week</button>
+                          <button type="button" class="btn btn-outline-secondary view-option" data-view="timeGridDay">Day</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Legend -->
+                  <div class="card mt-3">
+                    <div class="card-header">
+                      <h5 class="mb-0">Legend</h5>
+                    </div>
+                    <div class="card-body p-0">
+                      <ul class="list-group list-group-flush" id="calendarLegend">
+                        <!-- Will be populated with team colors -->
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-lg-9">
+                  <div class="card">
+                    <div class="card-body">
+                      <div id="calendar"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -399,6 +472,9 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Flatpickr Date Picker -->
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <!-- FullCalendar Library -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
   <!-- Main JavaScript -->
   <script>
     // Global variables
@@ -407,6 +483,10 @@
     let currentTeamId = 'all';
     let teamMembers = [];
     let selectedMembers = new Set();
+    let calendar = null;
+    let calendarInitialized = false;
+    let selectedTeams = new Set(); // For calendar view filtering
+    let teamColors = {}; // For team color coding
     
     // DOM elements
     const teamFilter = document.getElementById('teamFilter');
@@ -525,8 +605,13 @@
         listViewBtn.classList.remove('active');
         calendarView.style.display = 'block';
         listView.style.display = 'none';
-        // Implement calendar view in the future
-        calendarView.innerHTML = '<div class="text-center p-5"><i class="fas fa-calendar-alt mb-3" style="font-size: 3rem; color: #ccc;"></i><h4>Calendar View Coming Soon</h4><p>This feature will be available in a future update</p></div>';
+        
+        // Initialize the calendar if it's not already initialized
+        if (!calendarInitialized) {
+          initializeCalendar();
+          populateTeamCheckboxes();
+          setupCalendarControls();
+        }
       });
       
       // Recurrence toggle
