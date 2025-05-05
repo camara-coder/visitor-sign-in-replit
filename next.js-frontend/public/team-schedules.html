@@ -1189,6 +1189,9 @@
       }
     }
     
+    // Store modal instance
+    let scheduleDetailModalInstance = null;
+    
     // View schedule details
     async function viewScheduleDetails(scheduleId) {
       try {
@@ -1329,9 +1332,30 @@
           </div>
         `;
         
+        // Check if we already have a modal instance
+        if (scheduleDetailModalInstance) {
+          // Properly dispose the old modal instance
+          scheduleDetailModalInstance.dispose();
+          scheduleDetailModalInstance = null;
+        }
+        
+        // Get the modal element
+        const modalElement = document.getElementById('scheduleDetailModal');
+        
+        // Create a new modal instance
+        scheduleDetailModalInstance = new bootstrap.Modal(modalElement);
+        
+        // Add event listener for when modal is hidden
+        modalElement.addEventListener('hidden.bs.modal', function () {
+          // Cleanup to prevent memory leaks
+          if (scheduleDetailModalInstance) {
+            scheduleDetailModalInstance.dispose();
+            scheduleDetailModalInstance = null;
+          }
+        }, { once: true }); // Use 'once' to ensure this only executes once
+        
         // Show the modal
-        const modal = new bootstrap.Modal(document.getElementById('scheduleDetailModal'));
-        modal.show();
+        scheduleDetailModalInstance.show();
         
         // Setup edit button
         document.getElementById('editScheduleBtn').onclick = function() {
