@@ -104,16 +104,32 @@ EOL
 
 # Create or update CodePipeline role
 echo -e "${YELLOW}Creating/updating CodePipeline role...${NC}"
+# Show the path being used for debugging
+echo -e "${YELLOW}Using trust policy file: ${CODEPIPELINE_TRUST_POLICY_FILE}${NC}"
+cat "${CODEPIPELINE_TRUST_POLICY_FILE}"
+echo ""
+
+# Create temp inline JSON since file:// paths are problematic in MINGW64
+POLICY_JSON=$(cat "${CODEPIPELINE_TRUST_POLICY_FILE}")
+
 aws iam create-role \
   --role-name $CODEPIPELINE_ROLE_NAME \
-  --assume-role-policy-document "file://${CODEPIPELINE_TRUST_POLICY_FILE}" \
+  --assume-role-policy-document "$POLICY_JSON" \
   --region $REGION || true
 
 # Create or update CodeBuild role
 echo -e "${YELLOW}Creating/updating CodeBuild role...${NC}"
+# Show the path being used for debugging
+echo -e "${YELLOW}Using trust policy file: ${CODEBUILD_TRUST_POLICY_FILE}${NC}"
+cat "${CODEBUILD_TRUST_POLICY_FILE}"
+echo ""
+
+# Create temp inline JSON since file:// paths are problematic in MINGW64
+POLICY_JSON_CB=$(cat "${CODEBUILD_TRUST_POLICY_FILE}")
+
 aws iam create-role \
   --role-name $CODEBUILD_ROLE_NAME \
-  --assume-role-policy-document "file://${CODEBUILD_TRUST_POLICY_FILE}" \
+  --assume-role-policy-document "$POLICY_JSON_CB" \
   --region $REGION || true
 
 # Prepare policy file paths
@@ -180,18 +196,22 @@ fi
 
 # Attach policy to CodePipeline role
 echo -e "${YELLOW}Attaching policy to CodePipeline role...${NC}"
+echo -e "${YELLOW}Using policy file: ${CODEPIPELINE_POLICY_FILE}${NC}"
+POLICY_JSON_CP=$(cat "${CODEPIPELINE_POLICY_FILE}")
 aws iam put-role-policy \
   --role-name $CODEPIPELINE_ROLE_NAME \
   --policy-name "${APP_NAME}-codepipeline-policy" \
-  --policy-document "file://${CODEPIPELINE_POLICY_FILE}" \
+  --policy-document "${POLICY_JSON_CP}" \
   --region $REGION
 
 # Attach policy to CodeBuild role
 echo -e "${YELLOW}Attaching policy to CodeBuild role...${NC}"
+echo -e "${YELLOW}Using policy file: ${CODEBUILD_POLICY_FILE}${NC}"
+POLICY_JSON_CB_FULL=$(cat "${CODEBUILD_POLICY_FILE}")
 aws iam put-role-policy \
   --role-name $CODEBUILD_ROLE_NAME \
   --policy-name "${APP_NAME}-codebuild-policy" \
-  --policy-document "file://${CODEBUILD_POLICY_FILE}" \
+  --policy-document "${POLICY_JSON_CB_FULL}" \
   --region $REGION
 
 # Clean up temporary files
