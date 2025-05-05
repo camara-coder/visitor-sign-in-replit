@@ -2146,7 +2146,7 @@ app.get('/api/team-schedules/:id', async (req, res) => {
 // Create a new team schedule
 app.post('/api/teams/:id/schedules', async (req, res) => {
   const teamId = req.params.id;
-  const { title, description, startDate, endDate, recurrenceType, recurrenceEndDate, memberIds } = req.body;
+  const { title, description, startDate, endDate, recurrenceType, recurrenceEndDate, additionalDates, memberIds } = req.body;
   const userId = 1; // Default to admin user for now
   
   try {
@@ -2158,12 +2158,12 @@ app.post('/api/teams/:id/schedules', async (req, res) => {
     // Start a transaction
     await db.query('BEGIN');
     
-    // Create the schedule
+    // Create the schedule with additional dates if provided
     const scheduleResult = await db.query(`
       INSERT INTO team_schedules 
-        (team_id, title, description, start_date, end_date, recurrence_type, recurrence_end_date, created_by)
+        (team_id, title, description, start_date, end_date, recurrence_type, recurrence_end_date, recurrence_dates, created_by)
       VALUES 
-        ($1, $2, $3, $4, $5, $6, $7, $8)
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `, [
       teamId, 
@@ -2173,6 +2173,7 @@ app.post('/api/teams/:id/schedules', async (req, res) => {
       endDate, 
       recurrenceType || RECURRENCE_TYPES.NONE,
       recurrenceEndDate || null,
+      additionalDates && additionalDates.length > 0 ? JSON.stringify(additionalDates) : null,
       userId
     ]);
     
@@ -2233,7 +2234,7 @@ app.post('/api/teams/:id/schedules', async (req, res) => {
 // Update a team schedule
 app.put('/api/team-schedules/:id', async (req, res) => {
   const scheduleId = req.params.id;
-  const { title, description, startDate, endDate, recurrenceType, recurrenceEndDate } = req.body;
+  const { title, description, startDate, endDate, recurrenceType, recurrenceEndDate, additionalDates } = req.body;
   
   try {
     // Validate if schedule exists
@@ -2252,8 +2253,9 @@ app.put('/api/team-schedules/:id', async (req, res) => {
         end_date = $4, 
         recurrence_type = $5, 
         recurrence_end_date = $6,
+        recurrence_dates = $7,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $7
+      WHERE id = $8
       RETURNING *
     `, [
       title, 
@@ -2262,6 +2264,7 @@ app.put('/api/team-schedules/:id', async (req, res) => {
       endDate, 
       recurrenceType,
       recurrenceEndDate,
+      additionalDates && additionalDates.length > 0 ? JSON.stringify(additionalDates) : null,
       scheduleId
     ]);
     

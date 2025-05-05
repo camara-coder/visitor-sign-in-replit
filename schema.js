@@ -171,6 +171,7 @@ async function setupDatabase() {
         end_date DATE NOT NULL,
         recurrence_type VARCHAR(20) DEFAULT '${RECURRENCE_TYPES.NONE}',
         recurrence_end_date DATE,
+        recurrence_dates JSONB, -- Store array of additional date pairs
         created_by INTEGER REFERENCES users(id),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
