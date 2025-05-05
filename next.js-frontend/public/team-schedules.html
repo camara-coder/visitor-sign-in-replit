@@ -612,28 +612,60 @@
     
     // Setup modal event handlers
     function setupModalEventHandlers() {
-      // Handle modal hidden events to ensure modals are properly disposed
-      document.getElementById('createScheduleModal').addEventListener('hidden.bs.modal', function() {
-        // Remove any lingering backdrops
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) backdrop.remove();
+      try {
+        // Safely add event listeners with error handling
+        const createScheduleModal = document.getElementById('createScheduleModal');
+        if (createScheduleModal) {
+          createScheduleModal.addEventListener('hidden.bs.modal', function(event) {
+            try {
+              // Remove any lingering backdrops
+              const backdrop = document.querySelector('.modal-backdrop');
+              if (backdrop) backdrop.remove();
+              
+              // Reset body classes and styles
+              document.body.classList.remove('modal-open');
+              document.body.style.overflow = '';
+              document.body.style.paddingRight = '';
+            } catch (error) {
+              console.error('Error handling create schedule modal hidden event:', error);
+            }
+          });
+        }
         
-        // Reset body classes and styles
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-      });
-      
-      document.getElementById('scheduleDetailModal').addEventListener('hidden.bs.modal', function() {
-        // Remove any lingering backdrops
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) backdrop.remove();
+        const scheduleDetailModal = document.getElementById('scheduleDetailModal');
+        if (scheduleDetailModal) {
+          scheduleDetailModal.addEventListener('hidden.bs.modal', function(event) {
+            try {
+              // Remove any lingering backdrops
+              const backdrop = document.querySelector('.modal-backdrop');
+              if (backdrop) backdrop.remove();
+              
+              // Reset body classes and styles
+              document.body.classList.remove('modal-open');
+              document.body.style.overflow = '';
+              document.body.style.paddingRight = '';
+            } catch (error) {
+              console.error('Error handling schedule detail modal hidden event:', error);
+            }
+          });
+        }
         
-        // Reset body classes and styles
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-      });
+        // Add error handling for Bootstrap modals
+        const fixBootstrapModalBackdropIssue = () => {
+          if (document.querySelectorAll('.modal.show').length === 0 && document.querySelector('.modal-backdrop')) {
+            // No visible modals but backdrop exists - remove it
+            document.querySelector('.modal-backdrop').remove();
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+          }
+        };
+        
+        // Check periodically for stuck backdrop issues
+        setInterval(fixBootstrapModalBackdropIssue, 2000);
+      } catch (error) {
+        console.error('Error setting up modal event handlers:', error);
+      }
     }
     
     function initializeDatePickers() {
@@ -1379,30 +1411,75 @@
           </div>
         `;
         
-        // Check if we already have a modal instance
-        if (scheduleDetailModalInstance) {
-          // Properly dispose the old modal instance
-          scheduleDetailModalInstance.dispose();
-          scheduleDetailModalInstance = null;
-        }
-        
-        // Get the modal element
-        const modalElement = document.getElementById('scheduleDetailModal');
-        
-        // Create a new modal instance
-        scheduleDetailModalInstance = new bootstrap.Modal(modalElement);
-        
-        // Add event listener for when modal is hidden
-        modalElement.addEventListener('hidden.bs.modal', function () {
-          // Cleanup to prevent memory leaks
+        try {
+          // Check if we already have a modal instance
           if (scheduleDetailModalInstance) {
-            scheduleDetailModalInstance.dispose();
+            try {
+              // Properly dispose the old modal instance
+              scheduleDetailModalInstance.dispose();
+            } catch (modalError) {
+              console.warn('Error disposing previous modal instance:', modalError);
+            }
             scheduleDetailModalInstance = null;
           }
-        }, { once: true }); // Use 'once' to ensure this only executes once
-        
-        // Show the modal
-        scheduleDetailModalInstance.show();
+          
+          // Get the modal element
+          const modalElement = document.getElementById('scheduleDetailModal');
+          
+          // Create a new modal instance with error handling
+          try {
+            scheduleDetailModalInstance = new bootstrap.Modal(modalElement, {
+              backdrop: true,
+              keyboard: true,
+              focus: true
+            });
+            
+            // Add event listener for when modal is hidden
+            modalElement.addEventListener('hidden.bs.modal', function () {
+              try {
+                // Cleanup to prevent memory leaks
+                if (scheduleDetailModalInstance) {
+                  scheduleDetailModalInstance.dispose();
+                  scheduleDetailModalInstance = null;
+                }
+                
+                // Also cleanup any lingering backdrop
+                setTimeout(() => {
+                  const backdrop = document.querySelector('.modal-backdrop');
+                  if (backdrop) {
+                    backdrop.remove();
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
+                  }
+                }, 150);
+              } catch (error) {
+                console.error('Error in modal hidden event:', error);
+              }
+            }, { once: true }); // Use 'once' to ensure this only executes once
+            
+            // Show the modal with error handling
+            scheduleDetailModalInstance.show();
+          } catch (modalError) {
+            console.error('Error creating or showing modal:', modalError);
+            
+            // Fallback approach if modal creation fails
+            if (modalElement && typeof modalElement.classList !== 'undefined') {
+              modalElement.classList.add('show');
+              modalElement.style.display = 'block';
+              document.body.classList.add('modal-open');
+              
+              // Create backdrop manually if needed
+              if (!document.querySelector('.modal-backdrop')) {
+                const backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop fade show';
+                document.body.appendChild(backdrop);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error in modal setup:', error);
+        }
         
         // Setup edit button
         document.getElementById('editScheduleBtn').onclick = function() {
