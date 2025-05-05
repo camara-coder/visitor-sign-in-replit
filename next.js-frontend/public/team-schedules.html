@@ -1054,6 +1054,39 @@
           }
         }
         
+        // Additional dates
+        let additionalDatesHtml = '';
+        if (schedule.recurrence_dates && typeof schedule.recurrence_dates === 'object') {
+          const additionalDates = Array.isArray(schedule.recurrence_dates) ? schedule.recurrence_dates : [schedule.recurrence_dates];
+          
+          if (additionalDates.length > 0) {
+            additionalDatesHtml = '<div class="mt-3"><h6>Additional Date Ranges:</h6><ul class="list-group">';
+            
+            additionalDates.forEach(dateRange => {
+              const rangeStartDate = new Date(dateRange.startDate).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+              
+              const rangeEndDate = new Date(dateRange.endDate).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+              
+              additionalDatesHtml += `
+                <li class="list-group-item">
+                  <i class="fas fa-calendar-alt me-2"></i>
+                  ${rangeStartDate} to ${rangeEndDate}
+                </li>
+              `;
+            });
+            
+            additionalDatesHtml += '</ul></div>';
+          }
+        }
+        
         // Generate members HTML
         let membersHtml = '';
         if (schedule.members && schedule.members.length > 0) {
@@ -1104,6 +1137,7 @@
                       <i class="fas fa-user me-1"></i>${schedule.members ? schedule.members.length : 0} Members
                     </span>
                   </div>
+                  ${additionalDatesHtml}
                 </div>
               </div>
             </div>

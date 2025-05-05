@@ -2116,6 +2116,18 @@ app.get('/api/team-schedules/:id', async (req, res) => {
     
     const schedule = scheduleResult.rows[0];
     
+    // Parse recurrence_dates JSON if it exists
+    if (schedule.recurrence_dates) {
+      try {
+        if (typeof schedule.recurrence_dates === 'string') {
+          schedule.recurrence_dates = JSON.parse(schedule.recurrence_dates);
+        }
+      } catch (error) {
+        console.error('Error parsing recurrence_dates JSON:', error);
+        schedule.recurrence_dates = [];
+      }
+    }
+    
     // Get members in this schedule
     const membersResult = await db.query(`
       SELECT 
