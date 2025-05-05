@@ -424,7 +424,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Create Team Schedule</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" onclick="closeCreateScheduleModal()" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <form id="createScheduleForm">
@@ -527,7 +527,7 @@
           </form>
         </div>
         <div class="modal-footer flex-wrap">
-          <button type="button" class="btn btn-secondary me-2 mb-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary me-2 mb-2" onclick="closeCreateScheduleModal()">Cancel</button>
           <button type="button" class="btn btn-primary mb-2" id="createScheduleBtn">Create Schedule</button>
         </div>
       </div>
@@ -540,13 +540,13 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="scheduleDetailTitle">Schedule Details</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" onclick="closeScheduleDetailModal()" aria-label="Close"></button>
         </div>
         <div class="modal-body" id="scheduleDetailContent">
           <!-- Schedule details will be populated here -->
         </div>
         <div class="modal-footer flex-wrap">
-          <button type="button" class="btn btn-secondary me-2 mb-2" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-secondary me-2 mb-2" onclick="closeScheduleDetailModal()">Close</button>
           <button type="button" class="btn btn-primary mb-2" id="editScheduleBtn">Edit Schedule</button>
         </div>
       </div>
@@ -1411,74 +1411,35 @@
           </div>
         `;
         
+        // Use vanilla JS to show the modal instead of Bootstrap methods
         try {
-          // Check if we already have a modal instance
-          if (scheduleDetailModalInstance) {
-            try {
-              // Properly dispose the old modal instance
-              scheduleDetailModalInstance.dispose();
-            } catch (modalError) {
-              console.warn('Error disposing previous modal instance:', modalError);
-            }
-            scheduleDetailModalInstance = null;
-          }
-          
-          // Get the modal element
           const modalElement = document.getElementById('scheduleDetailModal');
           
-          // Create a new modal instance with error handling
+          // Clean up any existing modal instances or backdrops to prevent issues
           try {
-            scheduleDetailModalInstance = new bootstrap.Modal(modalElement, {
-              backdrop: true,
-              keyboard: true,
-              focus: true
-            });
+            // Try to dispose of any existing modal instance
+            const existingModal = bootstrap.Modal.getInstance(modalElement);
+            if (existingModal) existingModal.dispose();
             
-            // Add event listener for when modal is hidden
-            modalElement.addEventListener('hidden.bs.modal', function () {
-              try {
-                // Cleanup to prevent memory leaks
-                if (scheduleDetailModalInstance) {
-                  scheduleDetailModalInstance.dispose();
-                  scheduleDetailModalInstance = null;
-                }
-                
-                // Also cleanup any lingering backdrop
-                setTimeout(() => {
-                  const backdrop = document.querySelector('.modal-backdrop');
-                  if (backdrop) {
-                    backdrop.remove();
-                    document.body.classList.remove('modal-open');
-                    document.body.style.overflow = '';
-                    document.body.style.paddingRight = '';
-                  }
-                }, 150);
-              } catch (error) {
-                console.error('Error in modal hidden event:', error);
-              }
-            }, { once: true }); // Use 'once' to ensure this only executes once
-            
-            // Show the modal with error handling
-            scheduleDetailModalInstance.show();
-          } catch (modalError) {
-            console.error('Error creating or showing modal:', modalError);
-            
-            // Fallback approach if modal creation fails
-            if (modalElement && typeof modalElement.classList !== 'undefined') {
-              modalElement.classList.add('show');
-              modalElement.style.display = 'block';
-              document.body.classList.add('modal-open');
-              
-              // Create backdrop manually if needed
-              if (!document.querySelector('.modal-backdrop')) {
-                const backdrop = document.createElement('div');
-                backdrop.className = 'modal-backdrop fade show';
-                document.body.appendChild(backdrop);
-              }
-            }
+            // Remove any lingering backdrops from previous modals
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) backdrop.remove();
+          } catch (err) {
+            console.warn('Error cleaning up existing modals:', err);
           }
+          
+          // Manually show the modal
+          modalElement.classList.add('show');
+          modalElement.style.display = 'block';
+          document.body.classList.add('modal-open');
+          document.body.style.overflow = 'hidden';
+          
+          // Create backdrop element
+          const backdrop = document.createElement('div');
+          backdrop.className = 'modal-backdrop fade show';
+          document.body.appendChild(backdrop);
         } catch (error) {
-          console.error('Error in modal setup:', error);
+          console.error('Error showing modal:', error);
         }
         
         // Setup edit button
@@ -1543,6 +1504,66 @@
     // Show success alert
     function showSuccessAlert(message) {
       alert(message); // Simple alert for now, can be replaced with a nicer UI component
+    }
+    
+    // Close schedule detail modal manually
+    function closeScheduleDetailModal() {
+      try {
+        const modalElement = document.getElementById('scheduleDetailModal');
+        
+        // Hide the modal element
+        modalElement.classList.remove('show');
+        modalElement.style.display = 'none';
+        
+        // Remove the backdrop
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+        
+        // Reset body classes and styles
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Dispose of any bootstrap modal instance if it exists
+        try {
+          const modalInstance = bootstrap.Modal.getInstance(modalElement);
+          if (modalInstance) modalInstance.dispose();
+        } catch (error) {
+          console.warn('Error disposing modal instance:', error);
+        }
+      } catch (error) {
+        console.error('Error closing modal:', error);
+      }
+    }
+    
+    // Close create schedule modal manually
+    function closeCreateScheduleModal() {
+      try {
+        const modalElement = document.getElementById('createScheduleModal');
+        
+        // Hide the modal element
+        modalElement.classList.remove('show');
+        modalElement.style.display = 'none';
+        
+        // Remove the backdrop
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+        
+        // Reset body classes and styles
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Dispose of any bootstrap modal instance if it exists
+        try {
+          const modalInstance = bootstrap.Modal.getInstance(modalElement);
+          if (modalInstance) modalInstance.dispose();
+        } catch (error) {
+          console.warn('Error disposing modal instance:', error);
+        }
+      } catch (error) {
+        console.error('Error closing modal:', error);
+      }
     }
 
     // Calendar functionality
