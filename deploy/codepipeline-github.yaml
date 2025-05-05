@@ -1,0 +1,321 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Visitor Sign-In Application using CodePipeline with GitHub'
+
+Parameters:
+  AppName:
+    Description: Name of the application
+    Type: String
+    Default: visitor-sign-in-app
+  
+  EnvironmentName:
+    Description: Name of the environment
+    Type: String
+    Default: production
+    AllowedValues:
+      - production
+      - staging
+      - development
+  
+  GitHubOwner:
+    Description: GitHub repository owner
+    Type: String
+  
+  GitHubRepo:
+    Description: GitHub repository name
+    Type: String
+  
+  GitHubBranch:
+    Description: GitHub repository branch
+    Type: String
+    Default: main
+  
+  GitHubToken:
+    Description: GitHub OAuth token
+    Type: String
+    NoEcho: true
+  
+  ElasticBeanstalkApplicationName:
+    Description: Name of the Elastic Beanstalk application
+    Type: String
+    Default: visitor-sign-in-app
+  
+  ElasticBeanstalkEnvironmentName:
+    Description: Name of the Elastic Beanstalk environment
+    Type: String
+    Default: visitor-sign-in-app-production
+  
+  DatabasePassword:
+    Description: Password for the PostgreSQL database
+    Type: String
+    NoEcho: true
+  
+  DatabaseName:
+    Description: Name of the PostgreSQL database
+    Type: String
+    Default: visitor_app
+    
+  DatabaseUsername:
+    Description: Username for the PostgreSQL database
+    Type: String
+    Default: postgres
+    
+  DatabasePort:
+    Description: Port for the PostgreSQL database
+    Type: String
+    Default: 5432
+  
+  EmailServiceEnabled:
+    Description: Enable email notifications for visitor sign-ins and event registrations
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+  
+  SessionSecret:
+    Description: Secret for session encryption
+    Type: String
+    NoEcho: true
+    Default: "visitor-app-session-secret-change-in-production"
+  
+  ArtifactBucketName:
+    Description: Name of the S3 bucket for build artifacts
+    Type: String
+    Default: visitor-app-artifacts
+
+  PlatformVersion:
+    Description: Platform version for Elastic Beanstalk
+    Type: String
+    Default: "Node.js 20"
+
+  InstanceType:
+    Description: EC2 instance type for Elastic Beanstalk
+    Type: String
+    Default: t3.small
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+
+Resources:
+  # S3 Bucket for build artifacts
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref ArtifactBucketName
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+  
+  # IAM Roles
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonECR-FullAccess'
+  
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess'
+        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+        - 'arn:aws:iam::aws:policy/AWSElasticBeanstalkFullAccess'
+  
+  # Create IAM policy for CodePipeline to access GitHub
+  CodePipelineGitHubPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${AppName}-github-access-policy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'codestar-connections:UseConnection'
+            Resource: '*'
+      Roles:
+        - !Ref CodePipelineServiceRole
+  
+  # CodeBuild Project
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AppName}-build
+      Description: 'Build project for visitor sign-in application'
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        PrivilegedMode: false
+        EnvironmentVariables:
+          - Name: DEPLOY_STAGE
+            Value: !Ref EnvironmentName
+          - Name: DATABASE_PASSWORD
+            Value: !Ref DatabasePassword
+          - Name: DATABASE_NAME
+            Value: !Ref DatabaseName
+          - Name: DATABASE_USERNAME
+            Value: !Ref DatabaseUsername
+          - Name: DATABASE_PORT
+            Value: !Ref DatabasePort
+          - Name: SESSION_SECRET
+            Value: !Ref SessionSecret
+          - Name: EMAIL_SERVICE_ENABLED
+            Value: !Ref EmailServiceEnabled
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yml
+      TimeoutInMinutes: 15
+  
+  # Create Elastic Beanstalk application if it doesn't exist
+  ElasticBeanstalkApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: !Ref ElasticBeanstalkApplicationName
+      Description: !Sub "Elastic Beanstalk Application for ${AppName}"
+
+  # Create Elastic Beanstalk environment
+  ElasticBeanstalkEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref ElasticBeanstalkApplication
+      EnvironmentName: !Ref ElasticBeanstalkEnvironmentName
+      SolutionStackName: !Sub "64bit Amazon Linux 2 v5.8.0 running ${PlatformVersion}"
+      OptionSettings:
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: InstanceType
+          Value: !Ref InstanceType
+        
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: NODE_ENV
+          Value: !Ref EnvironmentName
+        
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: DATABASE_NAME
+          Value: !Ref DatabaseName
+        
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: DATABASE_USERNAME
+          Value: !Ref DatabaseUsername
+        
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: DATABASE_PASSWORD
+          Value: !Ref DatabasePassword
+        
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: DATABASE_PORT
+          Value: !Ref DatabasePort
+        
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: SESSION_SECRET
+          Value: !Ref SessionSecret
+        
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: EMAIL_SERVICE_ENABLED
+          Value: !Ref EmailServiceEnabled
+
+  # GitHub connection for CodePipeline
+  GitHubConnection:
+    Type: AWS::CodeStarConnections::Connection
+    Properties:
+      ConnectionName: !Sub ${AppName}-github-connection
+      ProviderType: GitHub
+
+  # CodePipeline
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub ${AppName}-pipeline
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        # Source Stage with GitHub
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              Configuration:
+                ConnectionArn: !GetAtt GitHubConnection.ConnectionArn
+                FullRepositoryId: !Sub ${GitHubOwner}/${GitHubRepo}
+                BranchName: !Ref GitHubBranch
+                OutputArtifactFormat: 'CODE_ZIP'
+              OutputArtifacts:
+                - Name: SourceCode
+        
+        # Build Stage
+        - Name: Build
+          Actions:
+            - Name: BuildAction
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceCode
+              OutputArtifacts:
+                - Name: BuildOutput
+        
+        # Deploy Stage
+        - Name: Deploy
+          Actions:
+            - Name: DeployToElasticBeanstalk
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: ElasticBeanstalk
+                Version: '1'
+              Configuration:
+                ApplicationName: !Ref ElasticBeanstalkApplicationName
+                EnvironmentName: !Ref ElasticBeanstalkEnvironmentName
+              InputArtifacts:
+                - Name: BuildOutput
+
+Outputs:
+  PipelineURL:
+    Description: URL to the CodePipeline console
+    Value: !Sub https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${AppName}-pipeline
+  
+  ApplicationURL:
+    Description: URL to the Elastic Beanstalk environment
+    Value: !Sub http://${ElasticBeanstalkEnvironment}.${AWS::Region}.elasticbeanstalk.com
+    
+  CodeStarConnectionARN:
+    Description: ARN of the GitHub connection (needs to be manually activated in the console)
+    Value: !GetAtt GitHubConnection.ConnectionArn
+    
+  ConnectionActivationInstructions:
+    Description: Instructions to activate the GitHub connection
+    Value: "To activate the GitHub connection, go to the AWS Console > Developer Tools > Settings > Connections > Click on the connection and follow the instructions to complete the GitHub authentication."
