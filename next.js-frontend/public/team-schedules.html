@@ -181,6 +181,44 @@
       padding: 0;
       font-size: 0.8rem;
     }
+    
+    .cursor-pointer {
+      cursor: pointer;
+    }
+    
+    /* Responsive improvements for mobile devices */
+    @media (max-width: 576px) {
+      /* Make checkboxes and buttons easier to tap on mobile */
+      .form-check-input, .btn-sm {
+        min-width: 1.2rem;
+        min-height: 1.2rem;
+      }
+      
+      /* Add more padding to clickable elements for easier touch */
+      .member-list-item, .selected-member-item {
+        padding: 0.5rem 0.3rem;
+      }
+      
+      /* Improve member display on very small screens */
+      .member-avatar {
+        margin-right: 5px;
+      }
+      
+      /* Make sure text doesn't overflow on small screens */
+      .text-truncate {
+        max-width: 120px;
+      }
+      
+      /* Make sure modal fits well on small screens */
+      .modal-dialog {
+        margin: 0.5rem;
+      }
+      
+      /* Adjust calendar columns on small screens */
+      .fc-col-header-cell-cushion, .fc-daygrid-day-number {
+        font-size: 0.8rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -964,9 +1002,9 @@
         html += `
           <div class="member-list-item" data-id="${member.id}">
             <input type="checkbox" class="member-checkbox form-check-input" id="member-${member.id}" value="${member.id}">
-            <label for="member-${member.id}" class="d-flex align-items-center w-100">
+            <label for="member-${member.id}" class="d-flex align-items-center w-100 cursor-pointer">
               <img src="${avatarUrl}" alt="${memberName}" class="member-avatar">
-              <span>${memberName}</span>
+              <span class="text-truncate">${memberName}</span>
             </label>
           </div>
         `;
@@ -1239,7 +1277,7 @@
             membersHtml += `
               <div class="d-flex align-items-center mb-2">
                 <img src="${avatarUrl}" alt="${memberName}" class="member-avatar">
-                <span>${memberName}</span>
+                <span class="text-truncate">${memberName}</span>
               </div>
             `;
           });
@@ -1260,7 +1298,7 @@
         scheduleDetailTitle.innerHTML = schedule.title;
         scheduleDetailContent.innerHTML = `
           <div class="row">
-            <div class="col-md-8">
+            <div class="col-md-8 mb-4 mb-md-0">
               <h5 class="mb-3">Schedule Details</h5>
               <div class="card mb-3">
                 <div class="card-body">
@@ -1268,9 +1306,9 @@
                   <p><strong>Description:</strong> ${schedule.description || 'No description'}</p>
                   <p><strong>Date Range:</strong> ${startDate} to ${endDate}</p>
                   <p><strong>Recurrence:</strong> ${recurrenceInfo}</p>
-                  <div class="mt-3">
-                    ${recurrenceBadge}
-                    <span class="badge bg-secondary">
+                  <div class="mt-3 d-flex flex-wrap">
+                    <div class="me-2 mb-2">${recurrenceBadge}</div>
+                    <span class="badge bg-secondary mb-2">
                       <i class="fas fa-user me-1"></i>${schedule.members ? schedule.members.length : 0} Members
                     </span>
                   </div>
@@ -1282,7 +1320,9 @@
               <h5 class="mb-3">Team Members</h5>
               <div class="card">
                 <div class="card-body">
-                  ${membersHtml}
+                  <div class="members-list" style="max-height: 250px; overflow-y: auto;">
+                    ${membersHtml}
+                  </div>
                 </div>
               </div>
             </div>
