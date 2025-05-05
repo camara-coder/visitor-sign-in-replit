@@ -178,10 +178,18 @@ echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 
 # Step 2: Setup IAM roles and policies
 echo -e "${CYAN}== Step 2: Setting up IAM roles and policies ==${NC}"
-IAM_SETUP_SCRIPT="${SCRIPT_DIR}/setup-iam-policies.sh"
+
+# Check if running on Windows (Git Bash/MINGW)
+if [[ "$(uname -s)" == *"MINGW"* ]]; then
+    IAM_SETUP_SCRIPT="${SCRIPT_DIR}/setup-iam-policies-windows.sh"
+    echo -e "${YELLOW}Detected Windows environment, using Windows-compatible IAM setup script${NC}"
+else
+    IAM_SETUP_SCRIPT="${SCRIPT_DIR}/setup-iam-policies.sh"
+    echo -e "${YELLOW}Using standard IAM setup script${NC}"
+fi
 
 if [ -f "${IAM_SETUP_SCRIPT}" ]; then
-    echo -e "${YELLOW}Running IAM setup script...${NC}"
+    echo -e "${YELLOW}Running IAM setup script: ${IAM_SETUP_SCRIPT}${NC}"
     # Make the script executable if it's not
     chmod +x "${IAM_SETUP_SCRIPT}"
     
