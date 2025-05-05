@@ -43,6 +43,22 @@
       color: #aaa;
       font-size: 2rem;
     }
+    .dropdown-menu {
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    .dropdown-menu.show {
+      display: block;
+    }
+    .dropdown-item {
+      padding: 0.5rem 1rem;
+      color: #212529;
+      text-decoration: none;
+    }
+    .dropdown-item:hover {
+      background-color: #f8f9fa;
+      color: #16181b;
+    }
   </style>
 </head>
 <body>
@@ -84,9 +100,11 @@
   <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h1 class="mb-0">Members Management</h1>
-      <button id="addMemberBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#memberFormModal">
-        <i class="fas fa-plus me-1"></i> Add Member
-      </button>
+      <div class="position-relative">
+        <button id="addMemberBtn" class="btn btn-primary">
+          <i class="fas fa-plus me-1"></i> Add Member <i class="fas fa-caret-down ms-1"></i>
+        </button>
+      </div>
     </div>
 
     <!-- Search and Filter -->
@@ -252,6 +270,7 @@
     const noMembersMessage = document.getElementById('noMembersMessage');
     const memberFormModal = new bootstrap.Modal(document.getElementById('memberFormModal'));
     const deleteConfirmModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    const batchMemberModal = new bootstrap.Modal(document.getElementById('batchMemberModal'));
     
     // Form elements
     const memberForm = document.getElementById('memberForm');
@@ -267,6 +286,14 @@
     const saveMemberBtn = document.getElementById('saveMemberBtn');
     const deleteMemberBtn = document.getElementById('deleteMemberBtn');
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    
+    // Batch entry elements
+    const batchMemberData = document.getElementById('batchMemberData');
+    const batchPreview = document.getElementById('batchPreview');
+    const previewCount = document.getElementById('previewCount');
+    const previewTable = document.getElementById('previewTable');
+    const previewBatchBtn = document.getElementById('previewBatchBtn');
+    const saveBatchBtn = document.getElementById('saveBatchBtn');
     
     // Check if user is logged in
     function checkAuth() {
@@ -592,6 +619,107 @@
       }, 5000);
     }
     
+    // Open batch entry modal
+    function openBatchEntryModal() {
+      batchMemberData.value = '';
+      batchPreview.classList.add('d-none');
+      previewTable.innerHTML = '';
+      batchMemberModal.show();
+    }
+    
+    // Parse batch member data
+    function parseBatchMemberData() {
+      const lines = batchMemberData.value.trim().split('\n');
+      const parsedMembers = [];
+      
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        
+        const parts = line.split(',').map(part => part.trim());
+        
+        if (parts.length < 3) {
+          showAlert(`Invalid format in line: ${line}. Expected at least 3 values.`, 'warning');
+          continue;
+        }
+        
+        const memberData = {
+          firstName: parts[0],
+          lastName: parts[1],
+          phone: formatPhoneNumber(parts[2]),
+          tags: parts.length > 3 ? parts.slice(3) : []
+        };
+        
+        parsedMembers.push(memberData);
+      }
+      
+      return parsedMembers;
+    }
+    
+    // Preview batch members
+    function previewBatchMembers() {
+      const parsedMembers = parseBatchMemberData();
+      
+      if (parsedMembers.length === 0) {
+        showAlert('No valid member data found. Please check your input.', 'warning');
+        return;
+      }
+      
+      // Update preview count
+      previewCount.textContent = parsedMembers.length;
+      
+      // Clear and populate preview table
+      previewTable.innerHTML = '';
+      
+      parsedMembers.forEach(member => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${member.firstName}</td>
+          <td>${member.lastName}</td>
+          <td>${member.phone}</td>
+          <td>${member.tags.join(', ')}</td>
+        `;
+        previewTable.appendChild(row);
+      });
+      
+      // Show preview section
+      batchPreview.classList.remove('d-none');
+    }
+    
+    // Save batch members
+    async function saveBatchMembers() {
+      const parsedMembers = parseBatchMemberData();
+      
+      if (parsedMembers.length === 0) {
+        showAlert('No valid member data found. Please check your input.', 'warning');
+        return;
+      }
+      
+      const userId = JSON.parse(localStorage.getItem('userData')).id;
+      let successCount = 0;
+      let errorCount = 0;
+      
+      // Show loading message
+      showAlert(`Processing ${parsedMembers.length} members...`, 'info');
+      
+      // Process each member
+      for (const member of parsedMembers) {
+        try {
+          await createMember({
+            ...member,
+            userId
+          });
+          successCount++;
+        } catch (error) {
+          errorCount++;
+          console.error('Error creating member:', error);
+        }
+      }
+      
+      // Show results
+      batchMemberModal.hide();
+      showAlert(`Added ${successCount} members successfully. ${errorCount > 0 ? `Failed to add ${errorCount} members.` : ''}`, 'success');
+    }
+
     // Handle logout
     function logout() {
       localStorage.removeItem('userData');
@@ -604,12 +732,63 @@
       fetchMembers();
       
       // Event listeners
-      document.getElementById('addMemberBtn').addEventListener('click', openAddModal);
+      const addMemberBtn = document.getElementById('addMemberBtn');
+      addMemberBtn.addEventListener('click', function(e) {
+        // Show dropdown for Add Member button
+        if (!addMemberBtn.parentElement.classList.contains('dropdown-menu-shown')) {
+          e.preventDefault();
+          
+          // Create dropdown menu if it doesn't exist
+          if (!document.getElementById('addMemberDropdown')) {
+            const dropdown = document.createElement('div');
+            dropdown.id = 'addMemberDropdown';
+            dropdown.className = 'dropdown-menu';
+            dropdown.style = 'position: absolute; margin-top: 4px;';
+            dropdown.innerHTML = `
+              <a class="dropdown-item" href="#" id="addSingleMemberBtn">
+                <i class="fas fa-user me-2"></i>Add Single Member
+              </a>
+              <a class="dropdown-item" href="#" id="addBatchMembersBtn">
+                <i class="fas fa-users me-2"></i>Add Multiple Members
+              </a>
+            `;
+            addMemberBtn.parentElement.appendChild(dropdown);
+            
+            // Add event listeners to dropdown items
+            document.getElementById('addSingleMemberBtn').addEventListener('click', (e) => {
+              e.preventDefault();
+              hideDropdown();
+              openAddModal();
+            });
+            
+            document.getElementById('addBatchMembersBtn').addEventListener('click', (e) => {
+              e.preventDefault();
+              hideDropdown();
+              openBatchEntryModal();
+            });
+          }
+          
+          // Show dropdown
+          const dropdown = document.getElementById('addMemberDropdown');
+          dropdown.classList.add('show');
+          addMemberBtn.parentElement.classList.add('dropdown-menu-shown');
+          
+          // Add click outside event listener
+          setTimeout(() => {
+            document.addEventListener('click', closeDropdownOnClickOutside);
+          }, 10);
+        }
+      });
+      
       searchInput.addEventListener('input', filterMembers);
       saveMemberBtn.addEventListener('click', saveMember);
       deleteMemberBtn.addEventListener('click', confirmDelete);
       confirmDeleteBtn.addEventListener('click', executeDelete);
       document.getElementById('logoutButton').addEventListener('click', logout);
+      
+      // Batch member modal events
+      previewBatchBtn.addEventListener('click', previewBatchMembers);
+      saveBatchBtn.addEventListener('click', saveBatchMembers);
       
       // Phone number formatting
       phone.addEventListener('input', function(e) {
@@ -624,6 +803,26 @@
           this.setSelectionRange(cursorPosition + cursorAdjustment, cursorPosition + cursorAdjustment);
         }
       });
+    }
+    
+    // Hide dropdown menu
+    function hideDropdown() {
+      const dropdown = document.getElementById('addMemberDropdown');
+      if (dropdown) {
+        dropdown.classList.remove('show');
+        document.getElementById('addMemberBtn').parentElement.classList.remove('dropdown-menu-shown');
+        document.removeEventListener('click', closeDropdownOnClickOutside);
+      }
+    }
+    
+    // Close dropdown when clicking outside
+    function closeDropdownOnClickOutside(e) {
+      const dropdown = document.getElementById('addMemberDropdown');
+      const addMemberBtn = document.getElementById('addMemberBtn');
+      
+      if (dropdown && !dropdown.contains(e.target) && e.target !== addMemberBtn) {
+        hideDropdown();
+      }
     }
     
     // Start the app
