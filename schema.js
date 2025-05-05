@@ -1,6 +1,15 @@
 const db = require('./database');
 
 // Create tables if they don't exist
+// Enum for schedule recurrence types
+const RECURRENCE_TYPES = {
+  NONE: 'none',
+  DAILY: 'daily',
+  WEEKLY: 'weekly',
+  BIWEEKLY: 'biweekly',
+  MONTHLY: 'monthly'
+};
+
 async function setupDatabase() {
   try {
     // Create users table
@@ -151,6 +160,36 @@ async function setupDatabase() {
       )
     `);
     
+    // Create team_schedules table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS team_schedules (
+        id SERIAL PRIMARY KEY,
+        team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+        title VARCHAR(100) NOT NULL,
+        description TEXT,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        recurrence_type VARCHAR(20) DEFAULT '${RECURRENCE_TYPES.NONE}',
+        recurrence_end_date DATE,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Create team_schedule_members join table 
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS team_schedule_members (
+        id SERIAL PRIMARY KEY,
+        schedule_id INTEGER REFERENCES team_schedules(id) ON DELETE CASCADE,
+        member_id INTEGER REFERENCES members(id) ON DELETE CASCADE,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(schedule_id, member_id, start_date)
+      )
+    `);
+    
     console.log('Database schema setup completed successfully');
     
     // Check if default admin user exists, if not create one
@@ -168,4 +207,4 @@ async function setupDatabase() {
   }
 }
 
-module.exports = { setupDatabase };
+module.exports = { setupDatabase, RECURRENCE_TYPES };
