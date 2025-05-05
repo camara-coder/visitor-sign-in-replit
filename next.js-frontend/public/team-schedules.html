@@ -605,7 +605,36 @@
       
       // Setup event listeners
       setupEventListeners();
+      
+      // Setup modal event handlers to fix modal closure issues
+      setupModalEventHandlers();
     });
+    
+    // Setup modal event handlers
+    function setupModalEventHandlers() {
+      // Handle modal hidden events to ensure modals are properly disposed
+      document.getElementById('createScheduleModal').addEventListener('hidden.bs.modal', function() {
+        // Remove any lingering backdrops
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+        
+        // Reset body classes and styles
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+      });
+      
+      document.getElementById('scheduleDetailModal').addEventListener('hidden.bs.modal', function() {
+        // Remove any lingering backdrops
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+        
+        // Reset body classes and styles
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+      });
+    }
     
     function initializeDatePickers() {
       const dateOptions = {
@@ -1111,6 +1140,9 @@
       });
     }
     
+    // Store modal instance for creating schedules
+    let createScheduleModalInstance = null;
+    
     // Create a new schedule
     async function createSchedule() {
       try {
@@ -1166,9 +1198,24 @@
         
         const newSchedule = await response.json();
         
-        // Close modal and reset form
-        const modal = bootstrap.Modal.getInstance(document.getElementById('createScheduleModal'));
-        modal.hide();
+        // Properly close the modal
+        const modalElement = document.getElementById('createScheduleModal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        
+        if (modal) {
+          modal.hide();
+          
+          // Ensure the backdrop is removed
+          setTimeout(() => {
+            if (document.querySelector('.modal-backdrop')) {
+              document.querySelector('.modal-backdrop').remove();
+              document.body.classList.remove('modal-open');
+              document.body.style.overflow = '';
+              document.body.style.paddingRight = '';
+            }
+          }, 200);
+        }
+        
         document.getElementById('createScheduleForm').reset();
         
         // Clear selected members
