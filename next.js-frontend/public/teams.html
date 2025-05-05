@@ -1196,7 +1196,7 @@
         `;
         
         // Add click event for selection
-        memberOption.addEventListener('click', () => {
+        const toggleSelection = () => {
           const memberId = member.id.toString();
           if (forTeamCreation) {
             // For team creation, toggle selection
@@ -1215,6 +1215,16 @@
             checkbox.checked = !checkbox.checked;
             memberOption.classList.toggle('selected', checkbox.checked);
           }
+        };
+        
+        // Add click handlers to both the member option and the checkbox
+        memberOption.addEventListener('click', toggleSelection);
+        
+        // Add specific handler for the checkbox to prevent event propagation issues
+        const checkbox = memberOption.querySelector('input');
+        checkbox.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent triggering the parent click event
+          toggleSelection();
         });
         
         container.appendChild(memberOption);
