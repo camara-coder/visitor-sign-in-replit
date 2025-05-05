@@ -1361,8 +1361,8 @@
       calendar.render();
       calendarInitialized = true;
       
-      // Initially select all teams
-      selectedTeams = new Set(teams.map(team => team.id));
+      // Initially select all teams (convert IDs to strings for consistency)
+      selectedTeams = new Set(teams.map(team => String(team.id)));
       updateCalendarEvents();
     }
     
@@ -1393,7 +1393,8 @@
       
       // Assign a color to each team
       teams.forEach((team, index) => {
-        teamColors[team.id] = colors[index % colors.length];
+        // Convert to string to ensure consistent lookups
+        teamColors[String(team.id)] = colors[index % colors.length];
       });
     }
     
@@ -1403,10 +1404,12 @@
       
       schedules.forEach(schedule => {
         // Only include schedules whose team is selected
-        if (!selectedTeams.has(schedule.team_id)) return;
+        // Convert to string to ensure consistent comparison
+        const teamId = String(schedule.team_id);
+        if (!selectedTeams.has(teamId)) return;
         
         // Find the team to get the color
-        const color = teamColors[schedule.team_id] || '#4285F4';
+        const color = teamColors[teamId] || '#4285F4';
         
         // Primary date range
         events.push({
@@ -1469,15 +1472,16 @@
       teamCheckboxes.innerHTML = '';
       
       teams.forEach(team => {
-        const color = teamColors[team.id] || '#4285F4';
-        const isChecked = selectedTeams.has(team.id);
+        const teamId = String(team.id);
+        const color = teamColors[teamId] || '#4285F4';
+        const isChecked = selectedTeams.has(teamId);
         
         const checkbox = document.createElement('div');
         checkbox.className = 'form-check mb-2';
         checkbox.innerHTML = `
-          <input class="form-check-input team-checkbox" type="checkbox" id="team-${team.id}" 
-            data-team-id="${team.id}" ${isChecked ? 'checked' : ''}>
-          <label class="form-check-label d-flex align-items-center" for="team-${team.id}">
+          <input class="form-check-input team-checkbox" type="checkbox" id="team-${teamId}" 
+            data-team-id="${teamId}" ${isChecked ? 'checked' : ''}>
+          <label class="form-check-label d-flex align-items-center" for="team-${teamId}">
             <span class="color-dot me-2" style="background-color: ${color};"></span>
             ${team.name}
           </label>
@@ -1511,8 +1515,9 @@
       legend.innerHTML = '';
       
       // Filter teams to only show selected ones
-      teams.filter(team => selectedTeams.has(team.id)).forEach(team => {
-        const color = teamColors[team.id] || '#4285F4';
+      teams.filter(team => selectedTeams.has(String(team.id))).forEach(team => {
+        const teamId = String(team.id);
+        const color = teamColors[teamId] || '#4285F4';
         
         const legendItem = document.createElement('li');
         legendItem.className = 'list-group-item d-flex align-items-center';
@@ -1626,7 +1631,9 @@
       
       schedules.forEach(schedule => {
         // Only include schedules whose team is selected
-        if (!selectedTeams.has(schedule.team_id)) return;
+        // Convert to string to ensure consistent comparison
+        const teamId = String(schedule.team_id);
+        if (!selectedTeams.has(teamId)) return;
         
         // Check if query matches schedule title, team name, or any member name
         const titleMatch = schedule.title.toLowerCase().includes(query);
@@ -1644,7 +1651,7 @@
         
         if (titleMatch || teamMatch || memberMatch) {
           // Find the team to get the color
-          const color = teamColors[schedule.team_id] || '#4285F4';
+          const color = teamColors[String(schedule.team_id)] || '#4285F4';
           
           // Primary date range
           filteredEvents.push({
