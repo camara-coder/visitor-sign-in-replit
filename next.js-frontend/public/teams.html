@@ -1098,7 +1098,7 @@
       teamName.value = team.name;
       teamDescription.value = team.description || '';
       teamPictureUrl.value = team.picture_url || '';
-      teamDirector.value = team.director_id || '';
+      teamDirector.value = team.director_id || '';  // This is correct as the API returns snake_case
       deleteTeamBtn.classList.remove('d-none');
       currentTeamId = team.id;
       
@@ -1295,8 +1295,8 @@
       const teamData = {
         name: teamName.value.trim(),
         description: teamDescription.value.trim() || null,
-        picture_url: teamPictureUrl.value.trim() || null,
-        director_id: teamDirector.value || null,
+        pictureUrl: teamPictureUrl.value.trim() || null,  // Changed from picture_url to pictureUrl
+        directorId: teamDirector.value || null,  // Changed from director_id to directorId
         userId: JSON.parse(localStorage.getItem('userData')).id
       };
       
