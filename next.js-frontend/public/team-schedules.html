@@ -697,8 +697,13 @@
       
       let html = '';
       teamMembers.forEach(member => {
-        const memberName = `${member.firstName} ${member.lastName}`;
-        const avatarUrl = member.pictureUrl || 'https://via.placeholder.com/40';
+        // Handle both camelCase and snake_case properties
+        const firstName = member.firstName || member.first_name;
+        const lastName = member.lastName || member.last_name;
+        const pictureUrl = member.pictureUrl || member.picture_url;
+        
+        const memberName = `${firstName} ${lastName}`;
+        const avatarUrl = pictureUrl || 'https://via.placeholder.com/40';
         
         html += `
           <div class="member-list-item" data-id="${member.id}">
@@ -775,8 +780,13 @@
       selectedMembers.forEach(memberId => {
         const member = teamMembers.find(m => m.id === memberId);
         if (member) {
-          const memberName = `${member.firstName} ${member.lastName}`;
-          const avatarUrl = member.pictureUrl || 'https://via.placeholder.com/25';
+          // Handle both camelCase and snake_case properties
+          const firstName = member.firstName || member.first_name;
+          const lastName = member.lastName || member.last_name;
+          const pictureUrl = member.pictureUrl || member.picture_url;
+          
+          const memberName = `${firstName} ${lastName}`;
+          const avatarUrl = pictureUrl || 'https://via.placeholder.com/25';
           
           html += `
             <div class="selected-member-item">
@@ -925,8 +935,13 @@
         let membersHtml = '';
         if (schedule.members && schedule.members.length > 0) {
           schedule.members.forEach(member => {
-            const memberName = `${member.firstName} ${member.lastName}`;
-            const avatarUrl = member.pictureUrl || 'https://via.placeholder.com/40';
+            // Handle both camelCase and snake_case properties
+            const firstName = member.firstName || member.first_name;
+            const lastName = member.lastName || member.last_name;
+            const pictureUrl = member.pictureUrl || member.picture_url;
+            
+            const memberName = `${firstName} ${lastName}`;
+            const avatarUrl = pictureUrl || 'https://via.placeholder.com/40';
             
             membersHtml += `
               <div class="d-flex align-items-center mb-2">
