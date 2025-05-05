@@ -1124,7 +1124,16 @@
       // Fetch current team to get existing members
       fetchTeam(teamId).then(team => {
         // Populate member options, excluding existing team members
-        populateMemberOptions(addMemberOptions, false, team.members || []);
+        // Convert snake_case to camelCase for consistent processing
+        const normalizedMembers = team.members ? team.members.map(member => ({
+          id: member.id,
+          firstName: member.first_name,
+          lastName: member.last_name,
+          pictureUrl: member.picture_url,
+          phone: member.phone
+        })) : [];
+        
+        populateMemberOptions(addMemberOptions, false, normalizedMembers);
         addMemberFilterInput.value = '';
         addMembersModal.show();
       });
