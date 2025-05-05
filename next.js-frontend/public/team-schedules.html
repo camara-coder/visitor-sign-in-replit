@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Schedules | Visitor Management System</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Flatpickr Date Picker CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .main-content {
+      margin-top: 2rem;
+    }
+    .card {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1.5rem;
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    }
+    .schedule-card {
+      cursor: pointer;
+    }
+    .schedule-detail {
+      display: none;
+    }
+    .badge-primary {
+      background-color: #007bff;
+      color: white;
+    }
+    .badge-success {
+      background-color: #28a745;
+      color: white;
+    }
+    .badge-info {
+      background-color: #17a2b8;
+      color: white;
+    }
+    .badge-warning {
+      background-color: #ffc107;
+      color: #212529;
+    }
+    .badge-secondary {
+      background-color: #6c757d;
+      color: white;
+    }
+    .member-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 10px;
+    }
+    .member-list-item {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .member-list-item:last-child {
+      border-bottom: none;
+    }
+    .member-checkbox {
+      margin-right: 10px;
+    }
+    .date-range-display {
+      font-weight: bold;
+      color: #495057;
+    }
+    .recurrence-badge {
+      font-size: 0.8rem;
+      padding: 0.3rem 0.5rem;
+    }
+    .schedule-actions {
+      display: flex;
+      gap: 5px;
+    }
+    .team-name {
+      font-weight: 500;
+      color: #6c757d;
+    }
+    .schedule-list {
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #6c757d;
+    }
+    .empty-state i {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      color: #dee2e6;
+    }
+    /* Custom switch for recurrence toggle */
+    .form-switch .form-check-input {
+      width: 3em;
+    }
+    .form-switch .form-check-input:checked {
+      background-color: #28a745;
+      border-color: #28a745;
+    }
+    /* Custom styling for recurrence options */
+    .recurrence-options {
+      background-color: #f8f9fa;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    .selected-members-container {
+      background-color: #f8f9fa;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-top: 1rem;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .selected-member-item {
+      display: flex;
+      align-items: center;
+      background-color: #e9ecef;
+      border-radius: 30px;
+      padding: 0.3rem 0.8rem;
+      margin: 0.3rem;
+      display: inline-flex;
+    }
+    .selected-member-item img {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+    .selected-member-item button {
+      background: none;
+      border: none;
+      color: #dc3545;
+      margin-left: 0.5rem;
+      padding: 0;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand" href="/">Visitor Management System</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a class="nav-link" href="/dashboard">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/members.html">Members</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/teams.html">Teams</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="/team-schedules.html">Team Schedules</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/settings.html">Settings</a>
+          </li>
+        </ul>
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#" id="logoutBtn">Logout</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container main-content">
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <h1>Team Schedules</h1>
+        <p class="text-muted">Create and manage schedules for your team members</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createScheduleModal">
+          <i class="fas fa-calendar-plus"></i> Create Schedule
+        </button>
+      </div>
+    </div>
+
+    <!-- Team Filter Dropdown -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="input-group">
+          <label class="input-group-text" for="teamFilter">Filter by Team:</label>
+          <select class="form-select" id="teamFilter">
+            <option value="all" selected>All Teams</option>
+            <!-- Teams will be populated here -->
+          </select>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="input-group">
+          <input type="text" class="form-control" id="scheduleSearch" placeholder="Search schedules...">
+          <button class="btn btn-outline-secondary" type="button">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Schedules Grid/List View -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Team Schedules</h5>
+            <div class="btn-group" role="group">
+              <button type="button" class="btn btn-outline-primary btn-sm active" id="listViewBtn">
+                <i class="fas fa-list"></i> List
+              </button>
+              <button type="button" class="btn btn-outline-primary btn-sm" id="calendarViewBtn">
+                <i class="fas fa-calendar-alt"></i> Calendar
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <!-- List View (default) -->
+            <div id="listView">
+              <div id="schedulesList" class="schedule-list">
+                <!-- Schedules will be populated here -->
+                <div class="empty-state" id="emptyState">
+                  <i class="fas fa-calendar-alt"></i>
+                  <h4>No Schedules Found</h4>
+                  <p>Create your first team schedule to get started</p>
+                  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createScheduleModal">
+                    Create Schedule
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Calendar View (initially hidden) -->
+            <div id="calendarView" style="display: none;">
+              <div id="scheduleCalendar">
+                <!-- Calendar will be rendered here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Schedule Modal -->
+  <div class="modal fade" id="createScheduleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Create Team Schedule</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="createScheduleForm">
+            <div class="row mb-3">
+              <div class="col-md-7">
+                <label for="scheduleTitle" class="form-label">Schedule Title</label>
+                <input type="text" class="form-control" id="scheduleTitle" placeholder="e.g., Weekly Team Meeting" required>
+              </div>
+              <div class="col-md-5">
+                <label for="teamSelect" class="form-label">Team</label>
+                <select class="form-select" id="teamSelect" required>
+                  <option value="" selected disabled>Select a team</option>
+                  <!-- Teams will be populated here -->
+                </select>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="scheduleDescription" class="form-label">Description (Optional)</label>
+              <textarea class="form-control" id="scheduleDescription" rows="2"></textarea>
+            </div>
+            
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="scheduleStartDate" class="form-label">Start Date</label>
+                <input type="text" class="form-control date-picker" id="scheduleStartDate" required>
+              </div>
+              <div class="col-md-6">
+                <label for="scheduleEndDate" class="form-label">End Date</label>
+                <input type="text" class="form-control date-picker" id="scheduleEndDate" required>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="isRecurring">
+                <label class="form-check-label" for="isRecurring">Recurring Schedule</label>
+              </div>
+            </div>
+            
+            <div class="recurrence-options" id="recurrenceOptions" style="display: none;">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label for="recurrenceType" class="form-label">Recurrence Pattern</label>
+                  <select class="form-select" id="recurrenceType">
+                    <option value="none">No Recurrence</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Bi-weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="recurrenceEndDate" class="form-label">Recurrence End Date</label>
+                  <input type="text" class="form-control date-picker" id="recurrenceEndDate">
+                </div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Team Members</label>
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <span>Select Members</span>
+                  <div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllMembers">Select All</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="clearAllMembers">Clear</button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div id="teamMembersList" style="max-height: 200px; overflow-y: auto;">
+                    <!-- Team members will be populated here -->
+                    <div class="text-center p-3 text-muted">
+                      <i class="fas fa-users"></i>
+                      <p>Please select a team first</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div id="selectedMembersContainer" class="selected-members-container" style="display: none;">
+              <label class="form-label">Selected Members</label>
+              <div id="selectedMembersList" class="d-flex flex-wrap">
+                <!-- Selected members will be displayed here -->
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="createScheduleBtn">Create Schedule</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule Detail Modal -->
+  <div class="modal fade" id="scheduleDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="scheduleDetailTitle">Schedule Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="scheduleDetailContent">
+          <!-- Schedule details will be populated here -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="editScheduleBtn">Edit Schedule</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Flatpickr Date Picker -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <!-- Main JavaScript -->
+  <script>
+    // Global variables
+    let teams = [];
+    let schedules = [];
+    let currentTeamId = 'all';
+    let teamMembers = [];
+    let selectedMembers = new Set();
+    
+    // DOM elements
+    const teamFilter = document.getElementById('teamFilter');
+    const teamSelect = document.getElementById('teamSelect');
+    const schedulesList = document.getElementById('schedulesList');
+    const emptyState = document.getElementById('emptyState');
+    const teamMembersList = document.getElementById('teamMembersList');
+    const selectedMembersContainer = document.getElementById('selectedMembersContainer');
+    const selectedMembersList = document.getElementById('selectedMembersList');
+    const isRecurringCheckbox = document.getElementById('isRecurring');
+    const recurrenceOptions = document.getElementById('recurrenceOptions');
+    const scheduleDetailContent = document.getElementById('scheduleDetailContent');
+    const scheduleDetailTitle = document.getElementById('scheduleDetailTitle');
+    const createScheduleBtn = document.getElementById('createScheduleBtn');
+    const selectAllMembersBtn = document.getElementById('selectAllMembers');
+    const clearAllMembersBtn = document.getElementById('clearAllMembers');
+    
+    // View toggle buttons
+    const listViewBtn = document.getElementById('listViewBtn');
+    const calendarViewBtn = document.getElementById('calendarViewBtn');
+    const listView = document.getElementById('listView');
+    const calendarView = document.getElementById('calendarView');
+    
+    // Initialize date pickers
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize date pickers
+      initializeDatePickers();
+      
+      // Fetch initial data
+      fetchTeams();
+      
+      // Setup event listeners
+      setupEventListeners();
+    });
+    
+    function initializeDatePickers() {
+      const dateOptions = {
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "F j, Y",
+        minDate: "today",
+      };
+      
+      flatpickr("#scheduleStartDate", {
+        ...dateOptions,
+        onChange: function(selectedDates, dateStr) {
+          const endDatePicker = document.getElementById("scheduleEndDate")._flatpickr;
+          endDatePicker.set("minDate", dateStr);
+        }
+      });
+      
+      flatpickr("#scheduleEndDate", dateOptions);
+      flatpickr("#recurrenceEndDate", dateOptions);
+    }
+    
+    function setupEventListeners() {
+      // Team filter change
+      teamFilter.addEventListener('change', function() {
+        currentTeamId = this.value;
+        fetchSchedules(currentTeamId);
+      });
+      
+      // Team select change
+      teamSelect.addEventListener('change', function() {
+        const teamId = this.value;
+        if (teamId) {
+          fetchTeamMembers(teamId);
+        } else {
+          teamMembersList.innerHTML = '<div class="text-center p-3 text-muted"><i class="fas fa-users"></i><p>Please select a team first</p></div>';
+        }
+      });
+      
+      // View toggle buttons
+      listViewBtn.addEventListener('click', function() {
+        listViewBtn.classList.add('active');
+        calendarViewBtn.classList.remove('active');
+        listView.style.display = 'block';
+        calendarView.style.display = 'none';
+      });
+      
+      calendarViewBtn.addEventListener('click', function() {
+        calendarViewBtn.classList.add('active');
+        listViewBtn.classList.remove('active');
+        calendarView.style.display = 'block';
+        listView.style.display = 'none';
+        // Implement calendar view in the future
+        calendarView.innerHTML = '<div class="text-center p-5"><i class="fas fa-calendar-alt mb-3" style="font-size: 3rem; color: #ccc;"></i><h4>Calendar View Coming Soon</h4><p>This feature will be available in a future update</p></div>';
+      });
+      
+      // Recurrence toggle
+      isRecurringCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+          recurrenceOptions.style.display = 'block';
+        } else {
+          recurrenceOptions.style.display = 'none';
+        }
+      });
+      
+      // Select/Clear all members
+      selectAllMembersBtn.addEventListener('click', selectAllMembers);
+      clearAllMembersBtn.addEventListener('click', clearAllMembers);
+      
+      // Create schedule button
+      createScheduleBtn.addEventListener('click', createSchedule);
+    }
+    
+    // Fetch all teams
+    async function fetchTeams() {
+      try {
+        const response = await fetch('/api/teams');
+        if (!response.ok) {
+          throw new Error('Failed to fetch teams');
+        }
+        
+        teams = await response.json();
+        
+        // Populate team filter dropdown
+        populateTeamDropdowns();
+        
+        // Fetch schedules for all teams initially
+        fetchSchedules('all');
+      } catch (error) {
+        console.error('Error fetching teams:', error);
+        showErrorAlert('Failed to load teams. Please try again later.');
+      }
+    }
+    
+    // Populate team dropdowns (filter and select)
+    function populateTeamDropdowns() {
+      // Clear existing options except the first one
+      teamFilter.innerHTML = '<option value="all" selected>All Teams</option>';
+      teamSelect.innerHTML = '<option value="" selected disabled>Select a team</option>';
+      
+      // Add team options
+      teams.forEach(team => {
+        // For filter dropdown
+        const filterOption = document.createElement('option');
+        filterOption.value = team.id;
+        filterOption.textContent = team.name;
+        teamFilter.appendChild(filterOption);
+        
+        // For select dropdown in create form
+        const selectOption = document.createElement('option');
+        selectOption.value = team.id;
+        selectOption.textContent = team.name;
+        teamSelect.appendChild(selectOption);
+      });
+    }
+    
+    // Fetch schedules for a specific team or all teams
+    async function fetchSchedules(teamId) {
+      try {
+        let url = teamId === 'all' ? '/api/teams/all/schedules' : `/api/teams/${teamId}/schedules`;
+        
+        // For "all" we need to fetch schedules for each team and combine them
+        if (teamId === 'all') {
+          schedules = [];
+          for (const team of teams) {
+            const response = await fetch(`/api/teams/${team.id}/schedules`);
+            if (response.ok) {
+              const teamSchedules = await response.json();
+              schedules = [...schedules, ...teamSchedules];
+            }
+          }
+        } else {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error('Failed to fetch schedules');
+          }
+          schedules = await response.json();
+        }
+        
+        // Display schedules
+        renderSchedules(schedules);
+      } catch (error) {
+        console.error('Error fetching schedules:', error);
+        showErrorAlert('Failed to load schedules. Please try again later.');
+      }
+    }
+    
+    // Render schedules in the list view
+    function renderSchedules(schedules) {
+      if (schedules.length === 0) {
+        emptyState.style.display = 'block';
+        schedulesList.innerHTML = '';
+      } else {
+        emptyState.style.display = 'none';
+        
+        // Sort schedules by start date (most recent first)
+        schedules.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+        
+        let html = '';
+        schedules.forEach(schedule => {
+          const startDate = new Date(schedule.start_date).toLocaleDateString();
+          const endDate = new Date(schedule.end_date).toLocaleDateString();
+          
+          // Generate recurrence badge
+          let recurrenceBadge = '';
+          if (schedule.recurrence_type && schedule.recurrence_type !== 'none') {
+            const badgeClass = getRecurrenceBadgeClass(schedule.recurrence_type);
+            recurrenceBadge = `<span class="badge ${badgeClass} recurrence-badge">
+              <i class="fas fa-repeat me-1"></i>${capitalize(schedule.recurrence_type)}
+            </span>`;
+          }
+          
+          html += `
+            <div class="card schedule-card mb-3" data-id="${schedule.id}">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <h5 class="card-title">${schedule.title}</h5>
+                    <p class="card-text text-muted team-name">
+                      <i class="fas fa-users me-1"></i>${schedule.team_name}
+                    </p>
+                  </div>
+                  <div class="schedule-actions">
+                    <button class="btn btn-outline-primary btn-sm view-schedule" data-id="${schedule.id}">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm delete-schedule" data-id="${schedule.id}">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="date-range-display mt-2">
+                  <i class="fas fa-calendar-alt me-2"></i>
+                  ${startDate} to ${endDate}
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                  ${recurrenceBadge}
+                  <span class="badge bg-secondary">
+                    <i class="fas fa-user me-1"></i>${schedule.member_count || 0} Members
+                  </span>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        
+        schedulesList.innerHTML = html;
+        
+        // Add event listeners to view and delete buttons
+        document.querySelectorAll('.view-schedule').forEach(button => {
+          button.addEventListener('click', function() {
+            const scheduleId = this.getAttribute('data-id');
+            viewScheduleDetails(scheduleId);
+          });
+        });
+        
+        document.querySelectorAll('.delete-schedule').forEach(button => {
+          button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (confirm('Are you sure you want to delete this schedule?')) {
+              const scheduleId = this.getAttribute('data-id');
+              deleteSchedule(scheduleId);
+            }
+          });
+        });
+        
+        // Make entire card clickable
+        document.querySelectorAll('.schedule-card').forEach(card => {
+          card.addEventListener('click', function() {
+            const scheduleId = this.getAttribute('data-id');
+            viewScheduleDetails(scheduleId);
+          });
+        });
+      }
+    }
+    
+    // Fetch members of a specific team
+    async function fetchTeamMembers(teamId) {
+      try {
+        const response = await fetch(`/api/teams/${teamId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch team details');
+        }
+        
+        const team = await response.json();
+        teamMembers = team.members || [];
+        
+        // Clear selected members
+        selectedMembers.clear();
+        updateSelectedMembersDisplay();
+        
+        // Render team members list
+        renderTeamMembers();
+      } catch (error) {
+        console.error('Error fetching team members:', error);
+        showErrorAlert('Failed to load team members. Please try again later.');
+      }
+    }
+    
+    // Render team members list with checkboxes
+    function renderTeamMembers() {
+      if (teamMembers.length === 0) {
+        teamMembersList.innerHTML = '<div class="text-center p-3 text-muted"><i class="fas fa-users"></i><p>No members in this team</p></div>';
+        return;
+      }
+      
+      let html = '';
+      teamMembers.forEach(member => {
+        const memberName = `${member.firstName} ${member.lastName}`;
+        const avatarUrl = member.pictureUrl || 'https://via.placeholder.com/40';
+        
+        html += `
+          <div class="member-list-item" data-id="${member.id}">
+            <input type="checkbox" class="member-checkbox form-check-input" id="member-${member.id}" value="${member.id}">
+            <label for="member-${member.id}" class="d-flex align-items-center w-100">
+              <img src="${avatarUrl}" alt="${memberName}" class="member-avatar">
+              <span>${memberName}</span>
+            </label>
+          </div>
+        `;
+      });
+      
+      teamMembersList.innerHTML = html;
+      
+      // Add event listeners to checkboxes
+      document.querySelectorAll('.member-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          const memberId = parseInt(this.value);
+          
+          if (this.checked) {
+            selectedMembers.add(memberId);
+          } else {
+            selectedMembers.delete(memberId);
+          }
+          
+          updateSelectedMembersDisplay();
+        });
+      });
+      
+      // Make entire row clickable
+      document.querySelectorAll('.member-list-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+          // Don't handle clicks on the checkbox itself (it handles its own events)
+          if (e.target.type !== 'checkbox') {
+            const checkbox = this.querySelector('.member-checkbox');
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event('change'));
+          }
+        });
+      });
+    }
+    
+    // Select all members
+    function selectAllMembers() {
+      teamMembers.forEach(member => {
+        selectedMembers.add(member.id);
+        const checkbox = document.getElementById(`member-${member.id}`);
+        if (checkbox) checkbox.checked = true;
+      });
+      
+      updateSelectedMembersDisplay();
+    }
+    
+    // Clear all selected members
+    function clearAllMembers() {
+      selectedMembers.clear();
+      document.querySelectorAll('.member-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+      });
+      
+      updateSelectedMembersDisplay();
+    }
+    
+    // Update the selected members display
+    function updateSelectedMembersDisplay() {
+      if (selectedMembers.size === 0) {
+        selectedMembersContainer.style.display = 'none';
+        return;
+      }
+      
+      selectedMembersContainer.style.display = 'block';
+      let html = '';
+      
+      selectedMembers.forEach(memberId => {
+        const member = teamMembers.find(m => m.id === memberId);
+        if (member) {
+          const memberName = `${member.firstName} ${member.lastName}`;
+          const avatarUrl = member.pictureUrl || 'https://via.placeholder.com/25';
+          
+          html += `
+            <div class="selected-member-item">
+              <img src="${avatarUrl}" alt="${memberName}">
+              <span>${memberName}</span>
+              <button type="button" class="remove-selected-member" data-id="${member.id}">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          `;
+        }
+      });
+      
+      selectedMembersList.innerHTML = html;
+      
+      // Add event listeners to remove buttons
+      document.querySelectorAll('.remove-selected-member').forEach(button => {
+        button.addEventListener('click', function() {
+          const memberId = parseInt(this.getAttribute('data-id'));
+          selectedMembers.delete(memberId);
+          
+          // Uncheck the corresponding checkbox
+          const checkbox = document.getElementById(`member-${memberId}`);
+          if (checkbox) checkbox.checked = false;
+          
+          updateSelectedMembersDisplay();
+        });
+      });
+    }
+    
+    // Create a new schedule
+    async function createSchedule() {
+      try {
+        // Get form values
+        const title = document.getElementById('scheduleTitle').value;
+        const teamId = document.getElementById('teamSelect').value;
+        const description = document.getElementById('scheduleDescription').value;
+        const startDate = document.getElementById('scheduleStartDate').value;
+        const endDate = document.getElementById('scheduleEndDate').value;
+        const isRecurring = document.getElementById('isRecurring').checked;
+        const recurrenceType = isRecurring ? document.getElementById('recurrenceType').value : 'none';
+        const recurrenceEndDate = isRecurring ? document.getElementById('recurrenceEndDate').value : null;
+        
+        // Validate inputs
+        if (!title || !teamId || !startDate || !endDate) {
+          showErrorAlert('Please fill in all required fields.');
+          return;
+        }
+        
+        if (selectedMembers.size === 0) {
+          showErrorAlert('Please select at least one team member.');
+          return;
+        }
+        
+        // Prepare request data
+        const scheduleData = {
+          title,
+          description,
+          startDate,
+          endDate,
+          recurrenceType,
+          recurrenceEndDate,
+          memberIds: Array.from(selectedMembers)
+        };
+        
+        // Send request to create schedule
+        const response = await fetch(`/api/teams/${teamId}/schedules`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(scheduleData)
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to create schedule');
+        }
+        
+        const newSchedule = await response.json();
+        
+        // Close modal and reset form
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createScheduleModal'));
+        modal.hide();
+        document.getElementById('createScheduleForm').reset();
+        
+        // Clear selected members
+        selectedMembers.clear();
+        updateSelectedMembersDisplay();
+        
+        // Hide recurrence options
+        recurrenceOptions.style.display = 'none';
+        
+        // Refresh schedules
+        fetchSchedules(currentTeamId);
+        
+        // Show success message
+        showSuccessAlert('Schedule created successfully!');
+      } catch (error) {
+        console.error('Error creating schedule:', error);
+        showErrorAlert(error.message || 'Failed to create schedule. Please try again.');
+      }
+    }
+    
+    // View schedule details
+    async function viewScheduleDetails(scheduleId) {
+      try {
+        const response = await fetch(`/api/team-schedules/${scheduleId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch schedule details');
+        }
+        
+        const schedule = await response.json();
+        
+        // Format dates
+        const startDate = new Date(schedule.start_date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        
+        const endDate = new Date(schedule.end_date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        
+        // Recurrence info
+        let recurrenceInfo = 'No recurrence';
+        if (schedule.recurrence_type && schedule.recurrence_type !== 'none') {
+          recurrenceInfo = `${capitalize(schedule.recurrence_type)}`;
+          
+          if (schedule.recurrence_end_date) {
+            const recurrenceEndDate = new Date(schedule.recurrence_end_date).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+            recurrenceInfo += ` until ${recurrenceEndDate}`;
+          }
+        }
+        
+        // Generate members HTML
+        let membersHtml = '';
+        if (schedule.members && schedule.members.length > 0) {
+          schedule.members.forEach(member => {
+            const memberName = `${member.firstName} ${member.lastName}`;
+            const avatarUrl = member.pictureUrl || 'https://via.placeholder.com/40';
+            
+            membersHtml += `
+              <div class="d-flex align-items-center mb-2">
+                <img src="${avatarUrl}" alt="${memberName}" class="member-avatar">
+                <span>${memberName}</span>
+              </div>
+            `;
+          });
+        } else {
+          membersHtml = '<p class="text-muted">No members in this schedule</p>';
+        }
+        
+        // Recurrence badge
+        let recurrenceBadge = '';
+        if (schedule.recurrence_type && schedule.recurrence_type !== 'none') {
+          const badgeClass = getRecurrenceBadgeClass(schedule.recurrence_type);
+          recurrenceBadge = `<span class="badge ${badgeClass} me-2">
+            <i class="fas fa-repeat me-1"></i>${capitalize(schedule.recurrence_type)}
+          </span>`;
+        }
+        
+        // Update modal content
+        scheduleDetailTitle.innerHTML = schedule.title;
+        scheduleDetailContent.innerHTML = `
+          <div class="row">
+            <div class="col-md-8">
+              <h5 class="mb-3">Schedule Details</h5>
+              <div class="card mb-3">
+                <div class="card-body">
+                  <p><strong>Team:</strong> ${schedule.team_name}</p>
+                  <p><strong>Description:</strong> ${schedule.description || 'No description'}</p>
+                  <p><strong>Date Range:</strong> ${startDate} to ${endDate}</p>
+                  <p><strong>Recurrence:</strong> ${recurrenceInfo}</p>
+                  <div class="mt-3">
+                    ${recurrenceBadge}
+                    <span class="badge bg-secondary">
+                      <i class="fas fa-user me-1"></i>${schedule.members ? schedule.members.length : 0} Members
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <h5 class="mb-3">Team Members</h5>
+              <div class="card">
+                <div class="card-body">
+                  ${membersHtml}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Show the modal
+        const modal = new bootstrap.Modal(document.getElementById('scheduleDetailModal'));
+        modal.show();
+        
+        // Setup edit button
+        document.getElementById('editScheduleBtn').onclick = function() {
+          // Implement edit functionality
+          alert('Edit functionality will be implemented in the next phase');
+        };
+      } catch (error) {
+        console.error('Error fetching schedule details:', error);
+        showErrorAlert('Failed to load schedule details. Please try again later.');
+      }
+    }
+    
+    // Delete a schedule
+    async function deleteSchedule(scheduleId) {
+      try {
+        const response = await fetch(`/api/team-schedules/${scheduleId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete schedule');
+        }
+        
+        // Refresh schedules
+        fetchSchedules(currentTeamId);
+        
+        // Show success message
+        showSuccessAlert('Schedule deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting schedule:', error);
+        showErrorAlert('Failed to delete schedule. Please try again later.');
+      }
+    }
+    
+    // Helper function to get badge class based on recurrence type
+    function getRecurrenceBadgeClass(recurrenceType) {
+      switch (recurrenceType) {
+        case 'daily':
+          return 'bg-primary';
+        case 'weekly':
+          return 'bg-success';
+        case 'biweekly':
+          return 'bg-info';
+        case 'monthly':
+          return 'bg-warning';
+        default:
+          return 'bg-secondary';
+      }
+    }
+    
+    // Helper function to capitalize first letter
+    function capitalize(string) {
+      return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+    
+    // Show error alert
+    function showErrorAlert(message) {
+      alert(message); // Simple alert for now, can be replaced with a nicer UI component
+    }
+    
+    // Show success alert
+    function showSuccessAlert(message) {
+      alert(message); // Simple alert for now, can be replaced with a nicer UI component
+    }
+  </script>
+</body>
+</html>

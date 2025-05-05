@@ -2064,6 +2064,364 @@ app.get('/members', (req, res) => {
   }
 });
 
+// Team Schedules API endpoints
+const { RECURRENCE_TYPES } = require('./schema');
+
+// Get all team schedules for a specific team
+app.get('/api/teams/:id/schedules', async (req, res) => {
+  const teamId = req.params.id;
+  
+  try {
+    // Validate if team exists
+    const teamResult = await db.query('SELECT * FROM teams WHERE id = $1', [teamId]);
+    if (teamResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    
+    // Get all schedules for the team
+    const schedulesResult = await db.query(`
+      SELECT 
+        ts.*, 
+        t.name as team_name,
+        (SELECT COUNT(*) FROM team_schedule_members WHERE schedule_id = ts.id) as member_count
+      FROM team_schedules ts
+      JOIN teams t ON ts.team_id = t.id
+      WHERE ts.team_id = $1
+      ORDER BY ts.start_date DESC, ts.created_at DESC
+    `, [teamId]);
+    
+    res.json(schedulesResult.rows);
+  } catch (error) {
+    console.error('Error fetching team schedules:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get a specific team schedule by ID
+app.get('/api/team-schedules/:id', async (req, res) => {
+  const scheduleId = req.params.id;
+  
+  try {
+    // Get the schedule
+    const scheduleResult = await db.query(`
+      SELECT ts.*, t.name as team_name
+      FROM team_schedules ts
+      JOIN teams t ON ts.team_id = t.id
+      WHERE ts.id = $1
+    `, [scheduleId]);
+    
+    if (scheduleResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Schedule not found' });
+    }
+    
+    const schedule = scheduleResult.rows[0];
+    
+    // Get members in this schedule
+    const membersResult = await db.query(`
+      SELECT 
+        m.id, m.first_name, m.last_name, m.picture_url,
+        tsm.start_date, tsm.end_date
+      FROM team_schedule_members tsm
+      JOIN members m ON tsm.member_id = m.id
+      WHERE tsm.schedule_id = $1
+      ORDER BY m.first_name, m.last_name
+    `, [scheduleId]);
+    
+    schedule.members = membersResult.rows.map(member => ({
+      id: member.id,
+      firstName: member.first_name,
+      lastName: member.last_name,
+      pictureUrl: member.picture_url,
+      startDate: member.start_date,
+      endDate: member.end_date
+    }));
+    
+    res.json(schedule);
+  } catch (error) {
+    console.error('Error fetching team schedule:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create a new team schedule
+app.post('/api/teams/:id/schedules', async (req, res) => {
+  const teamId = req.params.id;
+  const { title, description, startDate, endDate, recurrenceType, recurrenceEndDate, memberIds } = req.body;
+  const userId = 1; // Default to admin user for now
+  
+  try {
+    // Validate input
+    if (!title || !startDate || !endDate || !memberIds || !Array.isArray(memberIds)) {
+      return res.status(400).json({ message: 'Missing or invalid required fields' });
+    }
+    
+    // Start a transaction
+    await db.query('BEGIN');
+    
+    // Create the schedule
+    const scheduleResult = await db.query(`
+      INSERT INTO team_schedules 
+        (team_id, title, description, start_date, end_date, recurrence_type, recurrence_end_date, created_by)
+      VALUES 
+        ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `, [
+      teamId, 
+      title, 
+      description || '', 
+      startDate, 
+      endDate, 
+      recurrenceType || RECURRENCE_TYPES.NONE,
+      recurrenceEndDate || null,
+      userId
+    ]);
+    
+    const newSchedule = scheduleResult.rows[0];
+    
+    // Add members to the schedule
+    const memberPromises = memberIds.map(memberId => {
+      return db.query(`
+        INSERT INTO team_schedule_members
+          (schedule_id, member_id, start_date, end_date)
+        VALUES
+          ($1, $2, $3, $4)
+      `, [newSchedule.id, memberId, startDate, endDate]);
+    });
+    
+    await Promise.all(memberPromises);
+    
+    // Commit the transaction
+    await db.query('COMMIT');
+    
+    // Get the complete schedule with members
+    const completeScheduleResult = await db.query(`
+      SELECT ts.*, t.name as team_name
+      FROM team_schedules ts
+      JOIN teams t ON ts.team_id = t.id
+      WHERE ts.id = $1
+    `, [newSchedule.id]);
+    
+    const completeSchedule = completeScheduleResult.rows[0];
+    
+    // Get members in this schedule
+    const membersResult = await db.query(`
+      SELECT 
+        m.id, m.first_name, m.last_name, m.picture_url,
+        tsm.start_date, tsm.end_date
+      FROM team_schedule_members tsm
+      JOIN members m ON tsm.member_id = m.id
+      WHERE tsm.schedule_id = $1
+      ORDER BY m.first_name, m.last_name
+    `, [newSchedule.id]);
+    
+    completeSchedule.members = membersResult.rows.map(member => ({
+      id: member.id,
+      firstName: member.first_name,
+      lastName: member.last_name,
+      pictureUrl: member.picture_url,
+      startDate: member.start_date,
+      endDate: member.end_date
+    }));
+    
+    res.status(201).json(completeSchedule);
+  } catch (error) {
+    // Rollback the transaction in case of error
+    await db.query('ROLLBACK');
+    console.error('Error creating team schedule:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update a team schedule
+app.put('/api/team-schedules/:id', async (req, res) => {
+  const scheduleId = req.params.id;
+  const { title, description, startDate, endDate, recurrenceType, recurrenceEndDate } = req.body;
+  
+  try {
+    // Validate if schedule exists
+    const scheduleCheck = await db.query('SELECT * FROM team_schedules WHERE id = $1', [scheduleId]);
+    if (scheduleCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Schedule not found' });
+    }
+    
+    // Update the schedule
+    const updateResult = await db.query(`
+      UPDATE team_schedules 
+      SET 
+        title = $1, 
+        description = $2, 
+        start_date = $3, 
+        end_date = $4, 
+        recurrence_type = $5, 
+        recurrence_end_date = $6,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7
+      RETURNING *
+    `, [
+      title, 
+      description, 
+      startDate, 
+      endDate, 
+      recurrenceType,
+      recurrenceEndDate,
+      scheduleId
+    ]);
+    
+    const updatedSchedule = updateResult.rows[0];
+    
+    // Also update dates for all members in this schedule
+    await db.query(`
+      UPDATE team_schedule_members
+      SET start_date = $1, end_date = $2
+      WHERE schedule_id = $3
+    `, [startDate, endDate, scheduleId]);
+    
+    // Get the complete updated schedule with members
+    const completeScheduleResult = await db.query(`
+      SELECT ts.*, t.name as team_name
+      FROM team_schedules ts
+      JOIN teams t ON ts.team_id = t.id
+      WHERE ts.id = $1
+    `, [scheduleId]);
+    
+    const completeSchedule = completeScheduleResult.rows[0];
+    
+    // Get members in this schedule
+    const membersResult = await db.query(`
+      SELECT 
+        m.id, m.first_name, m.last_name, m.picture_url,
+        tsm.start_date, tsm.end_date
+      FROM team_schedule_members tsm
+      JOIN members m ON tsm.member_id = m.id
+      WHERE tsm.schedule_id = $1
+      ORDER BY m.first_name, m.last_name
+    `, [scheduleId]);
+    
+    completeSchedule.members = membersResult.rows.map(member => ({
+      id: member.id,
+      firstName: member.first_name,
+      lastName: member.last_name,
+      pictureUrl: member.picture_url,
+      startDate: member.start_date,
+      endDate: member.end_date
+    }));
+    
+    res.json(completeSchedule);
+  } catch (error) {
+    console.error('Error updating team schedule:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete a team schedule
+app.delete('/api/team-schedules/:id', async (req, res) => {
+  const scheduleId = req.params.id;
+  
+  try {
+    // Delete the schedule (cascade will handle deleting team_schedule_members entries)
+    const deleteResult = await db.query('DELETE FROM team_schedules WHERE id = $1 RETURNING id', [scheduleId]);
+    
+    if (deleteResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Schedule not found' });
+    }
+    
+    res.json({ message: 'Schedule deleted successfully', id: deleteResult.rows[0].id });
+  } catch (error) {
+    console.error('Error deleting team schedule:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Add members to a team schedule
+app.post('/api/team-schedules/:id/members', async (req, res) => {
+  const scheduleId = req.params.id;
+  const { memberIds } = req.body;
+  
+  try {
+    // Validate input
+    if (!memberIds || !Array.isArray(memberIds)) {
+      return res.status(400).json({ message: 'Member IDs are required and must be an array' });
+    }
+    
+    // Get the schedule
+    const scheduleResult = await db.query('SELECT * FROM team_schedules WHERE id = $1', [scheduleId]);
+    if (scheduleResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Schedule not found' });
+    }
+    
+    const schedule = scheduleResult.rows[0];
+    
+    // Start a transaction
+    await db.query('BEGIN');
+    
+    // Add each member to the schedule
+    const memberPromises = memberIds.map(memberId => {
+      return db.query(`
+        INSERT INTO team_schedule_members
+          (schedule_id, member_id, start_date, end_date)
+        VALUES
+          ($1, $2, $3, $4)
+        ON CONFLICT (schedule_id, member_id, start_date) DO NOTHING
+      `, [scheduleId, memberId, schedule.start_date, schedule.end_date]);
+    });
+    
+    await Promise.all(memberPromises);
+    
+    // Commit the transaction
+    await db.query('COMMIT');
+    
+    // Get the updated member list
+    const membersResult = await db.query(`
+      SELECT 
+        m.id, m.first_name, m.last_name, m.picture_url,
+        tsm.start_date, tsm.end_date
+      FROM team_schedule_members tsm
+      JOIN members m ON tsm.member_id = m.id
+      WHERE tsm.schedule_id = $1
+      ORDER BY m.first_name, m.last_name
+    `, [scheduleId]);
+    
+    const members = membersResult.rows.map(member => ({
+      id: member.id,
+      firstName: member.first_name,
+      lastName: member.last_name,
+      pictureUrl: member.picture_url,
+      startDate: member.start_date,
+      endDate: member.end_date
+    }));
+    
+    res.json(members);
+  } catch (error) {
+    // Rollback the transaction in case of error
+    await db.query('ROLLBACK');
+    console.error('Error adding members to team schedule:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Remove a member from a team schedule
+app.delete('/api/team-schedules/:scheduleId/members/:memberId', async (req, res) => {
+  const { scheduleId, memberId } = req.params;
+  
+  try {
+    // Delete the member from the schedule
+    const deleteResult = await db.query(`
+      DELETE FROM team_schedule_members
+      WHERE schedule_id = $1 AND member_id = $2
+      RETURNING id
+    `, [scheduleId, memberId]);
+    
+    if (deleteResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Member not found in this schedule' });
+    }
+    
+    res.json({ message: 'Member removed from schedule successfully', id: deleteResult.rows[0].id });
+  } catch (error) {
+    console.error('Error removing member from team schedule:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
