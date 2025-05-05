@@ -3,6 +3,10 @@
 # Deployment script to set up and deploy the Visitor Sign-In application using AWS CodePipeline with GitHub
 set -e
 
+# Determine script directory and root directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." &>/dev/null && pwd)"
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -44,7 +48,7 @@ if ! aws sts get-caller-identity &> /dev/null; then
     read run_sso_login
     
     if [[ $run_sso_login == "y" || $run_sso_login == "Y" ]]; then
-        source ./aws-sso-login.sh
+        source "${SCRIPT_DIR}/aws-sso-login.sh"
     else
         echo -e "${YELLOW}Please configure your AWS credentials and try again.${NC}"
         exit 1
@@ -153,8 +157,8 @@ SESSION_SECRET=$(openssl rand -base64 32)
 
 # Save configuration for future reference
 echo -e "${YELLOW}Saving deployment configuration...${NC}"
-mkdir -p .deployment-config
-CONFIG_FILE=".deployment-config/$(date +%Y%m%d-%H%M%S)-$STACK_NAME.conf"
+mkdir -p "${SCRIPT_DIR}/.deployment-config"
+CONFIG_FILE="${SCRIPT_DIR}/.deployment-config/$(date +%Y%m%d-%H%M%S)-$STACK_NAME.conf"
 cat > $CONFIG_FILE << EOL
 # Deployment configuration saved on $(date)
 APP_NAME=$APP_NAME
@@ -174,8 +178,16 @@ echo -e "${GREEN}Configuration saved to $CONFIG_FILE${NC}"
 
 # Step 2: Setup IAM roles and policies
 echo -e "${CYAN}== Step 2: Setting up IAM roles and policies ==${NC}"
-if [ -f "./setup-iam-policies.sh" ]; then
-    ./setup-iam-policies.sh
+IAM_SETUP_SCRIPT="${SCRIPT_DIR}/setup-iam-policies.sh"
+
+if [ -f "${IAM_SETUP_SCRIPT}" ]; then
+    echo -e "${YELLOW}Running IAM setup script...${NC}"
+    # Make the script executable if it's not
+    chmod +x "${IAM_SETUP_SCRIPT}"
+    
+    # Execute the script with the current working directory set to scripts/
+    (cd "${SCRIPT_DIR}" && "${IAM_SETUP_SCRIPT}")
+    
     if [ $? -ne 0 ]; then
         echo -e "${RED}Failed to set up IAM roles and policies.${NC}"
         echo -e "${YELLOW}Do you want to continue anyway? This might cause the deployment to fail. (y/n)${NC}"
@@ -188,7 +200,7 @@ if [ -f "./setup-iam-policies.sh" ]; then
         echo -e "${GREEN}IAM setup completed successfully.${NC}"
     fi
 else
-    echo -e "${YELLOW}IAM setup script not found. Skipping IAM setup.${NC}"
+    echo -e "${YELLOW}IAM setup script not found at: ${IAM_SETUP_SCRIPT}${NC}"
     echo -e "${YELLOW}This might cause the deployment to fail if the required IAM roles are not already created.${NC}"
     echo -e "${YELLOW}Do you want to continue anyway? (y/n)${NC}"
     read continue_anyway
@@ -253,14 +265,15 @@ fi
 echo -e "${YELLOW}Deploying CloudFormation stack. This may take 10-15 minutes...${NC}"
 
 # Check if the GitHub CloudFormation template exists
-if [ ! -f "../deploy/codepipeline-github.yaml" ]; then
-    echo -e "${RED}CloudFormation template not found at ../deploy/codepipeline-github.yaml${NC}"
+TEMPLATE_FILE="${ROOT_DIR}/deploy/codepipeline-github.yaml"
+if [ ! -f "${TEMPLATE_FILE}" ]; then
+    echo -e "${RED}CloudFormation template not found at ${TEMPLATE_FILE}${NC}"
     exit 1
 fi
 
 # Deploy or update the CloudFormation stack
 aws cloudformation deploy \
-    --template-file ../deploy/codepipeline-github.yaml \
+    --template-file "${TEMPLATE_FILE}" \
     --stack-name $STACK_NAME \
     --parameter-overrides \
         AppName=$APP_NAME \
