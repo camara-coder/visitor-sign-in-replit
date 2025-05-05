@@ -774,6 +774,11 @@
         
         // Display schedules
         renderSchedules(schedules);
+        
+        // Update calendar if it's initialized
+        if (calendarInitialized) {
+          updateCalendarEvents();
+        }
       } catch (error) {
         console.error('Error fetching schedules:', error);
         showErrorAlert('Failed to load schedules. Please try again later.');
@@ -1304,6 +1309,424 @@
     function showSuccessAlert(message) {
       alert(message); // Simple alert for now, can be replaced with a nicer UI component
     }
+
+    // Calendar functionality
+    
+    // Initialize the FullCalendar instance
+    function initializeCalendar() {
+      const calendarEl = document.getElementById('calendar');
+      
+      // Generate colors for each team
+      assignTeamColors();
+      
+      // Initialize the calendar
+      calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: '',
+          center: 'title',
+          right: ''
+        },
+        height: 'auto',
+        events: generateCalendarEvents(),
+        eventClick: function(info) {
+          // Show schedule details when clicking on an event
+          const scheduleId = info.event.id;
+          viewScheduleDetails(scheduleId);
+        },
+        eventDidMount: function(info) {
+          // Add tooltip with team and member information
+          const members = info.event.extendedProps.members;
+          const teamName = info.event.extendedProps.teamName;
+          
+          let tooltipContent = `<strong>${info.event.title}</strong><br>`;
+          tooltipContent += `<span class="text-muted">${teamName}</span><br>`;
+          
+          if (members && members.length > 0) {
+            tooltipContent += `<strong>Members:</strong><br>`;
+            members.slice(0, 5).forEach(member => {
+              tooltipContent += `${member.firstName || member.first_name} ${member.lastName || member.last_name}<br>`;
+            });
+            
+            if (members.length > 5) {
+              tooltipContent += `and ${members.length - 5} more...`;
+            }
+          }
+          
+          // Use bootstrap tooltip or a simple title attribute
+          info.el.setAttribute('title', tooltipContent.replace(/<br>/g, ' | ').replace(/<[^>]*>/g, ''));
+        }
+      });
+      
+      calendar.render();
+      calendarInitialized = true;
+      
+      // Initially select all teams
+      selectedTeams = new Set(teams.map(team => team.id));
+      updateCalendarEvents();
+    }
+    
+    // Assign unique colors to each team
+    function assignTeamColors() {
+      const colors = [
+        '#4285F4', // Google Blue
+        '#EA4335', // Google Red
+        '#FBBC05', // Google Yellow
+        '#34A853', // Google Green
+        '#8E24AA', // Purple
+        '#00ACC1', // Cyan
+        '#FB8C00', // Orange
+        '#43A047', // Green
+        '#E53935', // Red
+        '#3949AB', // Indigo
+        '#00897B', // Teal
+        '#7CB342', // Light Green
+        '#C0CA33', // Lime
+        '#FDD835', // Yellow
+        '#FFB300', // Amber
+        '#F4511E', // Deep Orange
+        '#6D4C41', // Brown
+        '#757575', // Grey
+        '#546E7A', // Blue Grey
+        '#EC407A', // Pink
+      ];
+      
+      // Assign a color to each team
+      teams.forEach((team, index) => {
+        teamColors[team.id] = colors[index % colors.length];
+      });
+    }
+    
+    // Generate calendar events from schedules
+    function generateCalendarEvents() {
+      const events = [];
+      
+      schedules.forEach(schedule => {
+        // Only include schedules whose team is selected
+        if (!selectedTeams.has(schedule.team_id)) return;
+        
+        // Find the team to get the color
+        const color = teamColors[schedule.team_id] || '#4285F4';
+        
+        // Primary date range
+        events.push({
+          id: schedule.id,
+          title: schedule.title,
+          start: schedule.start_date,
+          end: schedule.end_date,
+          color: color,
+          extendedProps: {
+            teamId: schedule.team_id,
+            teamName: schedule.team_name,
+            members: schedule.members,
+            description: schedule.description,
+            recurrenceType: schedule.recurrence_type
+          }
+        });
+        
+        // Add additional date ranges if it's a recurring schedule
+        if (schedule.recurrence_dates && Array.isArray(schedule.recurrence_dates)) {
+          schedule.recurrence_dates.forEach(dateRange => {
+            events.push({
+              id: schedule.id,
+              title: schedule.title,
+              start: dateRange.startDate,
+              end: dateRange.endDate,
+              color: color,
+              extendedProps: {
+                teamId: schedule.team_id,
+                teamName: schedule.team_name,
+                members: schedule.members,
+                description: schedule.description,
+                recurrenceType: schedule.recurrence_type,
+                isRecurrence: true
+              }
+            });
+          });
+        }
+      });
+      
+      return events;
+    }
+    
+    // Update calendar events based on filters
+    function updateCalendarEvents() {
+      if (!calendar) return;
+      
+      // Remove all existing events
+      calendar.removeAllEvents();
+      
+      // Add filtered events
+      calendar.addEventSource(generateCalendarEvents());
+      
+      // Update the legend
+      updateCalendarLegend();
+    }
+    
+    // Populate team checkboxes in the filter panel
+    function populateTeamCheckboxes() {
+      const teamCheckboxes = document.getElementById('teamCheckboxes');
+      teamCheckboxes.innerHTML = '';
+      
+      teams.forEach(team => {
+        const color = teamColors[team.id] || '#4285F4';
+        const isChecked = selectedTeams.has(team.id);
+        
+        const checkbox = document.createElement('div');
+        checkbox.className = 'form-check mb-2';
+        checkbox.innerHTML = `
+          <input class="form-check-input team-checkbox" type="checkbox" id="team-${team.id}" 
+            data-team-id="${team.id}" ${isChecked ? 'checked' : ''}>
+          <label class="form-check-label d-flex align-items-center" for="team-${team.id}">
+            <span class="color-dot me-2" style="background-color: ${color};"></span>
+            ${team.name}
+          </label>
+        `;
+        
+        teamCheckboxes.appendChild(checkbox);
+      });
+      
+      // Add event listeners to checkboxes
+      document.querySelectorAll('.team-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          const teamId = this.getAttribute('data-team-id');
+          
+          if (this.checked) {
+            selectedTeams.add(teamId);
+          } else {
+            selectedTeams.delete(teamId);
+          }
+          
+          updateCalendarEvents();
+        });
+      });
+      
+      // Update the legend
+      updateCalendarLegend();
+    }
+    
+    // Update the calendar legend with selected teams
+    function updateCalendarLegend() {
+      const legend = document.getElementById('calendarLegend');
+      legend.innerHTML = '';
+      
+      // Filter teams to only show selected ones
+      teams.filter(team => selectedTeams.has(team.id)).forEach(team => {
+        const color = teamColors[team.id] || '#4285F4';
+        
+        const legendItem = document.createElement('li');
+        legendItem.className = 'list-group-item d-flex align-items-center';
+        legendItem.innerHTML = `
+          <span class="color-dot me-2" style="background-color: ${color};"></span>
+          <span>${team.name}</span>
+        `;
+        
+        legend.appendChild(legendItem);
+      });
+      
+      // Add a message if no teams are selected
+      if (selectedTeams.size === 0) {
+        const noTeamsMessage = document.createElement('li');
+        noTeamsMessage.className = 'list-group-item text-center text-muted';
+        noTeamsMessage.textContent = 'No teams selected';
+        
+        legend.appendChild(noTeamsMessage);
+      }
+    }
+    
+    // Set up calendar control buttons and search
+    function setupCalendarControls() {
+      // Select/Clear all teams buttons
+      const selectAllTeamsBtn = document.getElementById('selectAllTeamsBtn');
+      const clearAllTeamsBtn = document.getElementById('clearAllTeamsBtn');
+      
+      selectAllTeamsBtn.addEventListener('click', function() {
+        document.querySelectorAll('.team-checkbox').forEach(checkbox => {
+          checkbox.checked = true;
+          selectedTeams.add(checkbox.getAttribute('data-team-id'));
+        });
+        updateCalendarEvents();
+      });
+      
+      clearAllTeamsBtn.addEventListener('click', function() {
+        document.querySelectorAll('.team-checkbox').forEach(checkbox => {
+          checkbox.checked = false;
+          selectedTeams.delete(checkbox.getAttribute('data-team-id'));
+        });
+        updateCalendarEvents();
+      });
+      
+      // Date navigation buttons
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const todayBtn = document.getElementById('todayBtn');
+      
+      prevBtn.addEventListener('click', function() {
+        calendar.prev();
+      });
+      
+      nextBtn.addEventListener('click', function() {
+        calendar.next();
+      });
+      
+      todayBtn.addEventListener('click', function() {
+        calendar.today();
+      });
+      
+      // Calendar view options
+      const viewOptions = document.querySelectorAll('.view-option');
+      viewOptions.forEach(option => {
+        option.addEventListener('click', function() {
+          // Update active state
+          viewOptions.forEach(btn => btn.classList.remove('active'));
+          this.classList.add('active');
+          
+          // Change calendar view
+          const view = this.getAttribute('data-view');
+          calendar.changeView(view);
+        });
+      });
+      
+      // Search functionality
+      const searchInput = document.getElementById('calendarSearch');
+      const clearSearchBtn = document.getElementById('clearSearchBtn');
+      
+      searchInput.addEventListener('input', debounce(function() {
+        applySearch(this.value);
+      }, 300));
+      
+      clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        applySearch('');
+      });
+    }
+    
+    // Debounce function to limit how often a function can be called
+    function debounce(func, wait) {
+      let timeout;
+      return function() {
+        const context = this;
+        const args = arguments;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+      };
+    }
+    
+    // Apply search filter to calendar events
+    function applySearch(query) {
+      if (!query || query.trim() === '') {
+        // If query is empty, show all events for selected teams
+        calendar.removeAllEvents();
+        calendar.addEventSource(generateCalendarEvents());
+        return;
+      }
+      
+      query = query.toLowerCase().trim();
+      const filteredEvents = [];
+      
+      schedules.forEach(schedule => {
+        // Only include schedules whose team is selected
+        if (!selectedTeams.has(schedule.team_id)) return;
+        
+        // Check if query matches schedule title, team name, or any member name
+        const titleMatch = schedule.title.toLowerCase().includes(query);
+        const teamMatch = schedule.team_name.toLowerCase().includes(query);
+        
+        let memberMatch = false;
+        if (schedule.members && Array.isArray(schedule.members)) {
+          memberMatch = schedule.members.some(member => {
+            const firstName = (member.firstName || member.first_name || '').toLowerCase();
+            const lastName = (member.lastName || member.last_name || '').toLowerCase();
+            return firstName.includes(query) || lastName.includes(query) || 
+                   `${firstName} ${lastName}`.includes(query);
+          });
+        }
+        
+        if (titleMatch || teamMatch || memberMatch) {
+          // Find the team to get the color
+          const color = teamColors[schedule.team_id] || '#4285F4';
+          
+          // Primary date range
+          filteredEvents.push({
+            id: schedule.id,
+            title: schedule.title,
+            start: schedule.start_date,
+            end: schedule.end_date,
+            color: color,
+            extendedProps: {
+              teamId: schedule.team_id,
+              teamName: schedule.team_name,
+              members: schedule.members,
+              description: schedule.description,
+              recurrenceType: schedule.recurrence_type
+            }
+          });
+          
+          // Add additional date ranges if it's a recurring schedule
+          if (schedule.recurrence_dates && Array.isArray(schedule.recurrence_dates)) {
+            schedule.recurrence_dates.forEach(dateRange => {
+              filteredEvents.push({
+                id: schedule.id,
+                title: schedule.title,
+                start: dateRange.startDate,
+                end: dateRange.endDate,
+                color: color,
+                extendedProps: {
+                  teamId: schedule.team_id,
+                  teamName: schedule.team_name,
+                  members: schedule.members,
+                  description: schedule.description,
+                  recurrenceType: schedule.recurrence_type,
+                  isRecurrence: true
+                }
+              });
+            });
+          }
+        }
+      });
+      
+      // Update calendar with filtered events
+      calendar.removeAllEvents();
+      calendar.addEventSource(filteredEvents);
+    }
+    
+    // Add CSS for the calendar components
+    document.addEventListener('DOMContentLoaded', function() {
+      const style = document.createElement('style');
+      style.textContent = `
+        .color-dot {
+          display: inline-block;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+        }
+        
+        #calendar {
+          min-height: 600px;
+        }
+        
+        .fc-event {
+          cursor: pointer;
+          border-radius: 4px;
+        }
+        
+        .fc-event-title {
+          font-weight: 500;
+          white-space: normal;
+        }
+        
+        .view-option.active {
+          background-color: #0d6efd;
+          color: white;
+        }
+        
+        .team-filter-list {
+          max-height: 200px;
+          overflow-y: auto;
+        }
+      `;
+      document.head.appendChild(style);
+    });
   </script>
 </body>
 </html>
