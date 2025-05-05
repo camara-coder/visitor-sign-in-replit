@@ -1630,6 +1630,429 @@ app.delete('/api/members/:id', async (req, res) => {
   }
 });
 
+// Team Management API Endpoints
+// Get all teams
+app.get('/api/teams', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT t.*, 
+             m.first_name || ' ' || m.last_name AS director_name, 
+             m.picture_url AS director_picture,
+             (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) AS member_count
+      FROM teams t
+      LEFT JOIN members m ON t.director_id = m.id
+      ORDER BY t.created_at DESC
+    `);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching teams:', error);
+    
+    // Fallback to in-memory
+    if (!inMemory.teams) {
+      inMemory.teams = [];
+    }
+    res.json(inMemory.teams);
+  }
+});
+
+// Get team by ID with members
+app.get('/api/teams/:id', async (req, res) => {
+  const teamId = req.params.id;
+  
+  try {
+    // Get team details
+    const teamResult = await db.query(`
+      SELECT t.*, 
+             m.first_name || ' ' || m.last_name AS director_name, 
+             m.picture_url AS director_picture
+      FROM teams t
+      LEFT JOIN members m ON t.director_id = m.id
+      WHERE t.id = $1
+    `, [teamId]);
+    
+    if (teamResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    
+    const team = teamResult.rows[0];
+    
+    // Get team members
+    const membersResult = await db.query(`
+      SELECT m.*, tm.joined_at
+      FROM team_members tm
+      JOIN members m ON tm.member_id = m.id
+      WHERE tm.team_id = $1
+      ORDER BY tm.joined_at ASC
+    `, [teamId]);
+    
+    team.members = membersResult.rows;
+    
+    res.json(team);
+  } catch (error) {
+    console.error('Error fetching team:', error);
+    
+    // Fallback to in-memory
+    if (!inMemory.teams) {
+      inMemory.teams = [];
+    }
+    
+    const team = inMemory.teams.find(t => t.id === teamId);
+    if (!team) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    
+    res.json(team);
+  }
+});
+
+// Create a new team
+app.post('/api/teams', async (req, res) => {
+  const { name, description, pictureUrl, directorId, memberIds } = req.body;
+  const userId = req.body.userId || 1; // Default to admin if no user ID provided
+  
+  if (!name) {
+    return res.status(400).json({ message: 'Team name is required' });
+  }
+  
+  try {
+    // Start a transaction
+    await db.query('BEGIN');
+    
+    // Create the team
+    const teamResult = await db.query(`
+      INSERT INTO teams (name, description, picture_url, director_id, created_by)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [name, description, pictureUrl, directorId, userId]);
+    
+    const team = teamResult.rows[0];
+    
+    // Add members if provided
+    if (memberIds && memberIds.length > 0) {
+      for (const memberId of memberIds) {
+        await db.query(`
+          INSERT INTO team_members (team_id, member_id)
+          VALUES ($1, $2)
+          ON CONFLICT (team_id, member_id) DO NOTHING
+        `, [team.id, memberId]);
+      }
+    }
+    
+    // Commit the transaction
+    await db.query('COMMIT');
+    
+    // Get the newly created team with members
+    const completeTeamResult = await db.query(`
+      SELECT t.*, 
+             m.first_name || ' ' || m.last_name AS director_name, 
+             m.picture_url AS director_picture
+      FROM teams t
+      LEFT JOIN members m ON t.director_id = m.id
+      WHERE t.id = $1
+    `, [team.id]);
+    
+    // Get team members
+    const membersResult = await db.query(`
+      SELECT m.*, tm.joined_at
+      FROM team_members tm
+      JOIN members m ON tm.member_id = m.id
+      WHERE tm.team_id = $1
+      ORDER BY tm.joined_at ASC
+    `, [team.id]);
+    
+    const completeTeam = completeTeamResult.rows[0];
+    completeTeam.members = membersResult.rows;
+    
+    res.status(201).json(completeTeam);
+  } catch (error) {
+    // Rollback the transaction in case of error
+    await db.query('ROLLBACK');
+    
+    console.error('Error creating team:', error);
+    
+    // Fallback to in-memory
+    try {
+      if (!inMemory.teams) {
+        inMemory.teams = [];
+      }
+      
+      const newTeam = {
+        id: String(Date.now()),
+        name,
+        description,
+        pictureUrl,
+        directorId,
+        members: [],
+        createdBy: userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      if (memberIds && memberIds.length > 0) {
+        for (const memberId of memberIds) {
+          const member = inMemory.members.find(m => m.id === memberId);
+          if (member) {
+            newTeam.members.push({
+              ...member,
+              joinedAt: new Date().toISOString()
+            });
+          }
+        }
+      }
+      
+      inMemory.teams.push(newTeam);
+      
+      res.status(201).json(newTeam);
+    } catch (inMemoryError) {
+      console.error('Error in in-memory fallback:', inMemoryError);
+      res.status(500).json({ message: 'Failed to create team' });
+    }
+  }
+});
+
+// Update a team
+app.put('/api/teams/:id', async (req, res) => {
+  const teamId = req.params.id;
+  const { name, description, pictureUrl, directorId } = req.body;
+  
+  if (!name) {
+    return res.status(400).json({ message: 'Team name is required' });
+  }
+  
+  try {
+    // Check if team exists
+    const teamCheck = await db.query('SELECT * FROM teams WHERE id = $1', [teamId]);
+    if (teamCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    
+    // Update team
+    const result = await db.query(`
+      UPDATE teams 
+      SET name = $1, 
+          description = $2, 
+          picture_url = $3, 
+          director_id = $4,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING *
+    `, [name, description, pictureUrl, directorId, teamId]);
+    
+    // Get updated team with director name
+    const updatedTeamResult = await db.query(`
+      SELECT t.*, 
+             m.first_name || ' ' || m.last_name AS director_name, 
+             m.picture_url AS director_picture
+      FROM teams t
+      LEFT JOIN members m ON t.director_id = m.id
+      WHERE t.id = $1
+    `, [teamId]);
+    
+    res.json(updatedTeamResult.rows[0]);
+  } catch (error) {
+    console.error('Error updating team:', error);
+    
+    // Fallback to in-memory
+    try {
+      if (!inMemory.teams) {
+        inMemory.teams = [];
+      }
+      
+      const teamIndex = inMemory.teams.findIndex(t => t.id === teamId);
+      if (teamIndex === -1) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+      
+      const updatedTeam = {
+        ...inMemory.teams[teamIndex],
+        name,
+        description,
+        pictureUrl,
+        directorId,
+        updatedAt: new Date().toISOString()
+      };
+      
+      inMemory.teams[teamIndex] = updatedTeam;
+      
+      res.json(updatedTeam);
+    } catch (inMemoryError) {
+      console.error('Error in in-memory fallback:', inMemoryError);
+      res.status(500).json({ message: 'Failed to update team' });
+    }
+  }
+});
+
+// Add members to a team
+app.post('/api/teams/:id/members', async (req, res) => {
+  const teamId = req.params.id;
+  const { memberIds } = req.body;
+  
+  if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+    return res.status(400).json({ message: 'Member IDs are required' });
+  }
+  
+  try {
+    // Check if team exists
+    const teamCheck = await db.query('SELECT * FROM teams WHERE id = $1', [teamId]);
+    if (teamCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    
+    // Start a transaction
+    await db.query('BEGIN');
+    
+    // Add members
+    for (const memberId of memberIds) {
+      await db.query(`
+        INSERT INTO team_members (team_id, member_id)
+        VALUES ($1, $2)
+        ON CONFLICT (team_id, member_id) DO NOTHING
+      `, [teamId, memberId]);
+    }
+    
+    // Commit the transaction
+    await db.query('COMMIT');
+    
+    // Get updated team members
+    const membersResult = await db.query(`
+      SELECT m.*, tm.joined_at
+      FROM team_members tm
+      JOIN members m ON tm.member_id = m.id
+      WHERE tm.team_id = $1
+      ORDER BY tm.joined_at ASC
+    `, [teamId]);
+    
+    res.json(membersResult.rows);
+  } catch (error) {
+    // Rollback the transaction in case of error
+    await db.query('ROLLBACK');
+    
+    console.error('Error adding team members:', error);
+    
+    // Fallback to in-memory
+    try {
+      if (!inMemory.teams) {
+        inMemory.teams = [];
+      }
+      
+      const team = inMemory.teams.find(t => t.id === teamId);
+      if (!team) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+      
+      if (!team.members) {
+        team.members = [];
+      }
+      
+      for (const memberId of memberIds) {
+        const member = inMemory.members.find(m => m.id === memberId);
+        if (member && !team.members.some(m => m.id === memberId)) {
+          team.members.push({
+            ...member,
+            joinedAt: new Date().toISOString()
+          });
+        }
+      }
+      
+      res.json(team.members);
+    } catch (inMemoryError) {
+      console.error('Error in in-memory fallback:', inMemoryError);
+      res.status(500).json({ message: 'Failed to add team members' });
+    }
+  }
+});
+
+// Remove a member from a team
+app.delete('/api/teams/:teamId/members/:memberId', async (req, res) => {
+  const { teamId, memberId } = req.params;
+  
+  try {
+    // Check if team exists
+    const teamCheck = await db.query('SELECT * FROM teams WHERE id = $1', [teamId]);
+    if (teamCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    
+    // Remove member
+    await db.query('DELETE FROM team_members WHERE team_id = $1 AND member_id = $2', [teamId, memberId]);
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error removing team member:', error);
+    
+    // Fallback to in-memory
+    try {
+      if (!inMemory.teams) {
+        inMemory.teams = [];
+      }
+      
+      const team = inMemory.teams.find(t => t.id === teamId);
+      if (!team) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+      
+      if (team.members) {
+        team.members = team.members.filter(m => m.id !== memberId);
+      }
+      
+      res.status(204).send();
+    } catch (inMemoryError) {
+      console.error('Error in in-memory fallback:', inMemoryError);
+      res.status(500).json({ message: 'Failed to remove team member' });
+    }
+  }
+});
+
+// Delete a team
+app.delete('/api/teams/:id', async (req, res) => {
+  const teamId = req.params.id;
+  
+  try {
+    // Check if team exists
+    const teamCheck = await db.query('SELECT * FROM teams WHERE id = $1', [teamId]);
+    if (teamCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    
+    // Delete team (cascade will delete team members)
+    await db.query('DELETE FROM teams WHERE id = $1', [teamId]);
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting team:', error);
+    
+    // Fallback to in-memory
+    try {
+      if (!inMemory.teams) {
+        inMemory.teams = [];
+      }
+      
+      const teamIndex = inMemory.teams.findIndex(t => t.id === teamId);
+      if (teamIndex === -1) {
+        return res.status(404).json({ message: 'Team not found' });
+      }
+      
+      inMemory.teams.splice(teamIndex, 1);
+      
+      res.status(204).send();
+    } catch (inMemoryError) {
+      console.error('Error in in-memory fallback:', inMemoryError);
+      res.status(500).json({ message: 'Failed to delete team' });
+    }
+  }
+});
+
+// Add a redirect from /teams to the teams page
+app.get('/teams', (req, res) => {
+  const teamsPath = path.join(__dirname, 'next.js-frontend/public/teams.html');
+  if (fs.existsSync(teamsPath)) {
+    res.sendFile(teamsPath);
+  } else {
+    res.redirect('/dashboard');
+  }
+});
+
 // Add a redirect from /members to the members page
 app.get('/members', (req, res) => {
   const membersPath = path.join(__dirname, 'next.js-frontend/public/members.html');
