@@ -549,11 +549,10 @@
     // Fetch schedules for a specific team or all teams
     async function fetchSchedules(teamId) {
       try {
-        let url = teamId === 'all' ? '/api/teams/all/schedules' : `/api/teams/${teamId}/schedules`;
+        schedules = [];
         
         // For "all" we need to fetch schedules for each team and combine them
         if (teamId === 'all') {
-          schedules = [];
           for (const team of teams) {
             const response = await fetch(`/api/teams/${team.id}/schedules`);
             if (response.ok) {
@@ -562,7 +561,7 @@
             }
           }
         } else {
-          const response = await fetch(url);
+          const response = await fetch(`/api/teams/${teamId}/schedules`);
           if (!response.ok) {
             throw new Error('Failed to fetch schedules');
           }

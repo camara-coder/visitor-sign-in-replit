@@ -2179,16 +2179,14 @@ app.post('/api/teams/:id/schedules', async (req, res) => {
     const newSchedule = scheduleResult.rows[0];
     
     // Add members to the schedule
-    const memberPromises = memberIds.map(memberId => {
-      return db.query(`
+    for (const memberId of memberIds) {
+      await db.query(`
         INSERT INTO team_schedule_members
           (schedule_id, member_id, start_date, end_date)
         VALUES
           ($1, $2, $3, $4)
       `, [newSchedule.id, memberId, startDate, endDate]);
-    });
-    
-    await Promise.all(memberPromises);
+    }
     
     // Commit the transaction
     await db.query('COMMIT');
@@ -2355,17 +2353,15 @@ app.post('/api/team-schedules/:id/members', async (req, res) => {
     await db.query('BEGIN');
     
     // Add each member to the schedule
-    const memberPromises = memberIds.map(memberId => {
-      return db.query(`
+    for (const memberId of memberIds) {
+      await db.query(`
         INSERT INTO team_schedule_members
           (schedule_id, member_id, start_date, end_date)
         VALUES
           ($1, $2, $3, $4)
         ON CONFLICT (schedule_id, member_id, start_date) DO NOTHING
       `, [scheduleId, memberId, schedule.start_date, schedule.end_date]);
-    });
-    
-    await Promise.all(memberPromises);
+    }
     
     // Commit the transaction
     await db.query('COMMIT');
