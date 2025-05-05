@@ -2064,6 +2064,16 @@ app.get('/members', (req, res) => {
   }
 });
 
+// Add a route handler for team-schedules page
+app.get('/team-schedules', (req, res) => {
+  const teamSchedulesPath = path.join(__dirname, 'next.js-frontend/public/team-schedules.html');
+  if (fs.existsSync(teamSchedulesPath)) {
+    res.sendFile(teamSchedulesPath);
+  } else {
+    res.redirect('/dashboard');
+  }
+});
+
 // Team Schedules API endpoints
 const { RECURRENCE_TYPES } = require('./schema');
 
