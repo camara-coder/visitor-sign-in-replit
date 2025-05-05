@@ -109,6 +109,23 @@ async function setupDatabase() {
       )
     `);
     
+    // Create members table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS members (
+        id SERIAL PRIMARY KEY,
+        first_name VARCHAR(50) NOT NULL,
+        last_name VARCHAR(50) NOT NULL,
+        date_of_birth DATE,
+        address TEXT,
+        phone VARCHAR(20) NOT NULL UNIQUE,
+        tags TEXT[],
+        picture_url TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER REFERENCES users(id)
+      )
+    `);
+    
     console.log('Database schema setup completed successfully');
     
     // Check if default admin user exists, if not create one
