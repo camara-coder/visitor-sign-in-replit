@@ -224,9 +224,9 @@
     
     // Check if user is logged in
     function checkAuth() {
-      const storedUser = localStorage.getItem('user');
+      const storedUser = localStorage.getItem('userData');
       if (!storedUser) {
-        window.location.href = '/login.html';
+        window.location.href = '/signin';
       }
     }
     
@@ -455,7 +455,7 @@
         address: address.value.trim() || null,
         tags: tags.value ? tags.value.split(',').map(tag => tag.trim()) : [],
         pictureUrl: pictureUrl.value.trim() || null,
-        userId: JSON.parse(localStorage.getItem('user')).id
+        userId: JSON.parse(localStorage.getItem('userData')).id
       };
       
       try {
@@ -530,8 +530,8 @@
     
     // Handle logout
     function logout() {
-      localStorage.removeItem('user');
-      window.location.href = '/login.html';
+      localStorage.removeItem('userData');
+      window.location.href = '/signin';
     }
     
     // Initialize the page
