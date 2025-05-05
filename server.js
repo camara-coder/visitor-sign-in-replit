@@ -42,7 +42,8 @@ const inMemory = {
     }
   ],
   visitors: [],
-  visitorDirectory: []
+  visitorDirectory: [],
+  members: []
 };
 
 // Middleware
@@ -1356,6 +1357,284 @@ app.get('/schedule', (req, res) => {
   const schedulePath = path.join(__dirname, 'next.js-frontend/public/schedule.html');
   if (fs.existsSync(schedulePath)) {
     res.sendFile(schedulePath);
+  } else {
+    res.redirect('/dashboard');
+  }
+});
+
+// MEMBERS MANAGEMENT ENDPOINTS
+app.get('/api/members', async (req, res) => {
+  try {
+    // Get all members from the database
+    const result = await db.query('SELECT * FROM members ORDER BY updated_at DESC');
+    
+    // Transform database field names to match our API format
+    const members = result.rows.map(member => ({
+      id: member.id.toString(),
+      firstName: member.first_name,
+      lastName: member.last_name,
+      dateOfBirth: member.date_of_birth,
+      address: member.address,
+      phone: member.phone,
+      tags: member.tags || [],
+      pictureUrl: member.picture_url,
+      createdAt: member.created_at,
+      updatedAt: member.updated_at,
+      createdBy: member.created_by ? member.created_by.toString() : null
+    }));
+    
+    res.json(members);
+  } catch (error) {
+    console.error('Error fetching members:', error);
+    // Fallback to in-memory data
+    res.json(inMemory.members);
+  }
+});
+
+app.get('/api/members/:id', async (req, res) => {
+  const memberId = req.params.id;
+  
+  try {
+    // Get the member from the database
+    const result = await db.query('SELECT * FROM members WHERE id = $1', [memberId]);
+    
+    if (result.rows.length > 0) {
+      const member = result.rows[0];
+      
+      // Transform database field names to match our API format
+      const formattedMember = {
+        id: member.id.toString(),
+        firstName: member.first_name,
+        lastName: member.last_name,
+        dateOfBirth: member.date_of_birth,
+        address: member.address,
+        phone: member.phone,
+        tags: member.tags || [],
+        pictureUrl: member.picture_url,
+        createdAt: member.created_at,
+        updatedAt: member.updated_at,
+        createdBy: member.created_by ? member.created_by.toString() : null
+      };
+      
+      res.json(formattedMember);
+    } else {
+      // Try in-memory data if member not found in database
+      const member = inMemory.members.find(m => m.id === memberId);
+      
+      if (member) {
+        res.json(member);
+      } else {
+        res.status(404).json({ message: 'Member not found' });
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching member:', error);
+    // Fallback to in-memory data
+    const member = inMemory.members.find(m => m.id === memberId);
+    
+    if (member) {
+      res.json(member);
+    } else {
+      res.status(404).json({ message: 'Member not found' });
+    }
+  }
+});
+
+app.post('/api/members', async (req, res) => {
+  const { firstName, lastName, dateOfBirth, address, phone, tags, pictureUrl } = req.body;
+  const userId = req.body.userId || '1'; // For simplicity, default to user 1
+  
+  try {
+    // Check for existing phone number
+    const phoneCheck = await db.query('SELECT * FROM members WHERE phone = $1', [phone]);
+    if (phoneCheck.rows.length > 0) {
+      return res.status(400).json({ message: 'Phone number already exists' });
+    }
+    
+    // Insert new member into the database
+    const result = await db.query(
+      `INSERT INTO members 
+       (first_name, last_name, date_of_birth, address, phone, tags, picture_url, created_by) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       RETURNING *`,
+      [firstName, lastName, dateOfBirth, address, phone, tags, pictureUrl, userId]
+    );
+    
+    const newMember = result.rows[0];
+    
+    // Transform database field names to match our API format
+    const formattedMember = {
+      id: newMember.id.toString(),
+      firstName: newMember.first_name,
+      lastName: newMember.last_name,
+      dateOfBirth: newMember.date_of_birth,
+      address: newMember.address,
+      phone: newMember.phone,
+      tags: newMember.tags || [],
+      pictureUrl: newMember.picture_url,
+      createdAt: newMember.created_at,
+      updatedAt: newMember.updated_at,
+      createdBy: newMember.created_by ? newMember.created_by.toString() : null
+    };
+    
+    res.status(201).json(formattedMember);
+  } catch (error) {
+    console.error('Error creating member:', error);
+    
+    // Fallback to in-memory if database error
+    // Check for existing phone number
+    if (inMemory.members.find(m => m.phone === phone)) {
+      return res.status(400).json({ message: 'Phone number already exists' });
+    }
+    
+    // Create new member in memory
+    const newMember = {
+      id: (inMemory.members.length + 1).toString(),
+      firstName,
+      lastName,
+      dateOfBirth,
+      address,
+      phone,
+      tags: tags || [],
+      pictureUrl,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: userId
+    };
+    
+    // Add to in-memory members array
+    inMemory.members.push(newMember);
+    
+    res.status(201).json(newMember);
+  }
+});
+
+app.put('/api/members/:id', async (req, res) => {
+  const memberId = req.params.id;
+  const { firstName, lastName, dateOfBirth, address, phone, tags, pictureUrl } = req.body;
+  
+  try {
+    // Check if member exists
+    const memberCheck = await db.query('SELECT * FROM members WHERE id = $1', [memberId]);
+    if (memberCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Member not found' });
+    }
+    
+    // Check for phone number conflicts
+    const phoneCheck = await db.query('SELECT * FROM members WHERE phone = $1 AND id != $2', [phone, memberId]);
+    if (phoneCheck.rows.length > 0) {
+      return res.status(400).json({ message: 'Phone number already in use by another member' });
+    }
+    
+    // Update member in the database
+    const result = await db.query(
+      `UPDATE members 
+       SET first_name = $1, last_name = $2, date_of_birth = $3, address = $4, 
+           phone = $5, tags = $6, picture_url = $7, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $8
+       RETURNING *`,
+      [firstName, lastName, dateOfBirth, address, phone, tags, pictureUrl, memberId]
+    );
+    
+    const updatedMember = result.rows[0];
+    
+    // Transform database field names to match our API format
+    const formattedMember = {
+      id: updatedMember.id.toString(),
+      firstName: updatedMember.first_name,
+      lastName: updatedMember.last_name,
+      dateOfBirth: updatedMember.date_of_birth,
+      address: updatedMember.address,
+      phone: updatedMember.phone,
+      tags: updatedMember.tags || [],
+      pictureUrl: updatedMember.picture_url,
+      createdAt: updatedMember.created_at,
+      updatedAt: updatedMember.updated_at,
+      createdBy: updatedMember.created_by ? updatedMember.created_by.toString() : null
+    };
+    
+    res.json(formattedMember);
+  } catch (error) {
+    console.error('Error updating member:', error);
+    
+    // Fallback to in-memory if database error
+    try {
+      // Check if member exists
+      const memberIndex = inMemory.members.findIndex(m => m.id === memberId);
+      if (memberIndex === -1) {
+        return res.status(404).json({ message: 'Member not found' });
+      }
+      
+      // Check for phone number conflicts
+      const phoneConflict = inMemory.members.find(m => m.phone === phone && m.id !== memberId);
+      if (phoneConflict) {
+        return res.status(400).json({ message: 'Phone number already in use by another member' });
+      }
+      
+      // Update member in memory
+      const updatedMember = {
+        ...inMemory.members[memberIndex],
+        firstName,
+        lastName,
+        dateOfBirth,
+        address,
+        phone,
+        tags: tags || [],
+        pictureUrl,
+        updatedAt: new Date().toISOString()
+      };
+      
+      inMemory.members[memberIndex] = updatedMember;
+      
+      res.json(updatedMember);
+    } catch (inMemoryError) {
+      console.error('Error in in-memory fallback:', inMemoryError);
+      res.status(500).json({ message: 'Failed to update member' });
+    }
+  }
+});
+
+app.delete('/api/members/:id', async (req, res) => {
+  const memberId = req.params.id;
+  
+  try {
+    // Check if member exists
+    const memberCheck = await db.query('SELECT * FROM members WHERE id = $1', [memberId]);
+    if (memberCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Member not found' });
+    }
+    
+    // Delete member from the database
+    await db.query('DELETE FROM members WHERE id = $1', [memberId]);
+    
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting member:', error);
+    
+    // Fallback to in-memory if database error
+    try {
+      // Check if member exists
+      const memberIndex = inMemory.members.findIndex(m => m.id === memberId);
+      if (memberIndex === -1) {
+        return res.status(404).json({ message: 'Member not found' });
+      }
+      
+      // Delete member from memory
+      inMemory.members.splice(memberIndex, 1);
+      
+      res.status(204).send();
+    } catch (inMemoryError) {
+      console.error('Error in in-memory fallback:', inMemoryError);
+      res.status(500).json({ message: 'Failed to delete member' });
+    }
+  }
+});
+
+// Add a redirect from /members to the members page
+app.get('/members', (req, res) => {
+  const membersPath = path.join(__dirname, 'next.js-frontend/public/members.html');
+  if (fs.existsSync(membersPath)) {
+    res.sendFile(membersPath);
   } else {
     res.redirect('/dashboard');
   }

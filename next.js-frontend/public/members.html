@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Members Management | Visitor Management System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+  <style>
+    .member-card {
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+    }
+    .member-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .tag {
+      display: inline-block;
+      background-color: #f0f0f0;
+      border-radius: 20px;
+      padding: 4px 10px;
+      margin-right: 5px;
+      margin-bottom: 5px;
+      font-size: 0.8rem;
+    }
+    .profile-picture {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      background-color: #f0f0f0;
+    }
+    .empty-profile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background-color: #f0f0f0;
+      color: #aaa;
+      font-size: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <i class="fas fa-clipboard-list me-2"></i>
+        Visitor Management
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="/dashboard">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/directory">Visitor Directory</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="/members">Members</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/schedule">Schedule</a>
+          </li>
+        </ul>
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a id="logoutButton" class="nav-link" href="#"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="mb-0">Members Management</h1>
+      <button id="addMemberBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#memberFormModal">
+        <i class="fas fa-plus me-1"></i> Add Member
+      </button>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-search"></i></span>
+          <input type="text" id="searchInput" class="form-control" placeholder="Search members...">
+        </div>
+      </div>
+    </div>
+
+    <!-- Members List -->
+    <div class="row" id="membersList">
+      <div class="col-12 text-center py-5" id="loadingIndicator">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading members...</p>
+      </div>
+      <div class="col-12 text-center py-5 d-none" id="noMembersMessage">
+        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+        <h3>No Members Found</h3>
+        <p class="text-muted">Start by adding your first member using the "Add Member" button above.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Member Form Modal -->
+  <div class="modal fade" id="memberFormModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">Add New Member</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="memberForm">
+            <input type="hidden" id="memberId">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="firstName" class="form-label">First Name *</label>
+                <input type="text" class="form-control" id="firstName" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="lastName" class="form-label">Last Name *</label>
+                <input type="text" class="form-control" id="lastName" required>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="phone" class="form-label">Phone Number *</label>
+                <input type="tel" class="form-control" id="phone" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="dateOfBirth" class="form-label">Date of Birth</label>
+                <input type="date" class="form-control" id="dateOfBirth">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="address" class="form-label">Address</label>
+              <textarea class="form-control" id="address" rows="2"></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="tags" class="form-label">Tags (comma separated)</label>
+              <input type="text" class="form-control" id="tags" placeholder="e.g. vip, frequent, new">
+              <div class="form-text">Enter tags separated by commas</div>
+            </div>
+            <div class="mb-3">
+              <label for="pictureUrl" class="form-label">Profile Picture URL</label>
+              <input type="url" class="form-control" id="pictureUrl" placeholder="https://example.com/image.jpg">
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger d-none" id="deleteMemberBtn">Delete</button>
+          <button type="button" class="btn btn-primary" id="saveMemberBtn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Deletion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this member? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap & jQuery Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Member Management Scripts -->
+  <script>
+    // Global variables
+    let members = [];
+    let currentMemberId = null;
+    
+    // DOM elements
+    const membersList = document.getElementById('membersList');
+    const searchInput = document.getElementById('searchInput');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const noMembersMessage = document.getElementById('noMembersMessage');
+    const memberFormModal = new bootstrap.Modal(document.getElementById('memberFormModal'));
+    const deleteConfirmModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    
+    // Form elements
+    const memberForm = document.getElementById('memberForm');
+    const modalTitle = document.getElementById('modalTitle');
+    const memberId = document.getElementById('memberId');
+    const firstName = document.getElementById('firstName');
+    const lastName = document.getElementById('lastName');
+    const phone = document.getElementById('phone');
+    const dateOfBirth = document.getElementById('dateOfBirth');
+    const address = document.getElementById('address');
+    const tags = document.getElementById('tags');
+    const pictureUrl = document.getElementById('pictureUrl');
+    const saveMemberBtn = document.getElementById('saveMemberBtn');
+    const deleteMemberBtn = document.getElementById('deleteMemberBtn');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    
+    // Check if user is logged in
+    function checkAuth() {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        window.location.href = '/login.html';
+      }
+    }
+    
+    // Fetch all members
+    async function fetchMembers() {
+      loadingIndicator.classList.remove('d-none');
+      noMembersMessage.classList.add('d-none');
+      
+      try {
+        const response = await fetch('/api/members');
+        if (!response.ok) throw new Error('Failed to fetch members');
+        
+        members = await response.json();
+        renderMembers(members);
+      } catch (error) {
+        console.error('Error fetching members:', error);
+        showAlert('Failed to load members: ' + error.message, 'danger');
+      } finally {
+        loadingIndicator.classList.add('d-none');
+        if (members.length === 0) {
+          noMembersMessage.classList.remove('d-none');
+        }
+      }
+    }
+    
+    // Render members list
+    function renderMembers(membersToRender) {
+      // Clear current list except for loading and no members message
+      const elementsToKeep = [loadingIndicator, noMembersMessage];
+      while (membersList.children.length > elementsToKeep.length) {
+        if (!elementsToKeep.includes(membersList.children[0])) {
+          membersList.removeChild(membersList.children[0]);
+        } else {
+          membersList.appendChild(membersList.children[0]);
+        }
+      }
+      
+      if (membersToRender.length === 0) {
+        noMembersMessage.classList.remove('d-none');
+        return;
+      }
+      
+      noMembersMessage.classList.add('d-none');
+      
+      // Add member cards
+      membersToRender.forEach(member => {
+        const memberCard = document.createElement('div');
+        memberCard.className = 'col-md-6 col-lg-4 mb-4';
+        memberCard.innerHTML = `
+          <div class="card member-card h-100" data-id="${member.id}">
+            <div class="card-body">
+              <div class="d-flex mb-3">
+                ${member.pictureUrl ? 
+                  `<img src="${member.pictureUrl}" alt="Profile" class="profile-picture me-3">` : 
+                  `<div class="empty-profile me-3"><i class="fas fa-user"></i></div>`
+                }
+                <div>
+                  <h5 class="card-title mb-1">${member.firstName} ${member.lastName}</h5>
+                  <p class="card-text text-muted mb-0">${member.phone}</p>
+                </div>
+              </div>
+              ${member.address ? `<p class="card-text small mb-2"><i class="fas fa-map-marker-alt me-2"></i>${member.address}</p>` : ''}
+              ${member.dateOfBirth ? `<p class="card-text small mb-2"><i class="fas fa-birthday-cake me-2"></i>${formatDate(member.dateOfBirth)}</p>` : ''}
+              <div class="mt-2">
+                ${member.tags && member.tags.length > 0 ? 
+                  member.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : 
+                  '<span class="text-muted small">No tags</span>'
+                }
+              </div>
+            </div>
+            <div class="card-footer bg-transparent">
+              <small class="text-muted">Added on ${formatDate(member.createdAt)}</small>
+            </div>
+          </div>
+        `;
+        
+        // Add click event to open edit modal
+        memberCard.querySelector('.member-card').addEventListener('click', () => {
+          openEditModal(member);
+        });
+        
+        membersList.appendChild(memberCard);
+      });
+    }
+    
+    // Filter members based on search input
+    function filterMembers() {
+      const searchTerm = searchInput.value.toLowerCase();
+      
+      if (!searchTerm) {
+        renderMembers(members);
+        return;
+      }
+      
+      const filtered = members.filter(member => {
+        const fullName = `${member.firstName} ${member.lastName}`.toLowerCase();
+        const hasTags = member.tags && member.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+        
+        return fullName.includes(searchTerm) || 
+               (member.phone && member.phone.includes(searchTerm)) || 
+               (member.address && member.address.toLowerCase().includes(searchTerm)) ||
+               hasTags;
+      });
+      
+      renderMembers(filtered);
+    }
+    
+    // Create new member
+    async function createMember(memberData) {
+      try {
+        const response = await fetch('/api/members', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(memberData)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to create member');
+        }
+        
+        const newMember = await response.json();
+        members.unshift(newMember); // Add to beginning of array
+        renderMembers(members);
+        return newMember;
+      } catch (error) {
+        console.error('Error creating member:', error);
+        throw error;
+      }
+    }
+    
+    // Update existing member
+    async function updateMember(memberId, memberData) {
+      try {
+        const response = await fetch(`/api/members/${memberId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(memberData)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to update member');
+        }
+        
+        const updatedMember = await response.json();
+        
+        // Update in local array
+        const index = members.findIndex(m => m.id === memberId);
+        if (index !== -1) {
+          members[index] = updatedMember;
+        }
+        
+        renderMembers(members);
+        return updatedMember;
+      } catch (error) {
+        console.error('Error updating member:', error);
+        throw error;
+      }
+    }
+    
+    // Delete member
+    async function deleteMember(memberId) {
+      try {
+        const response = await fetch(`/api/members/${memberId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to delete member');
+        }
+        
+        // Remove from local array
+        members = members.filter(m => m.id !== memberId);
+        renderMembers(members);
+      } catch (error) {
+        console.error('Error deleting member:', error);
+        throw error;
+      }
+    }
+    
+    // Open modal for adding a new member
+    function openAddModal() {
+      modalTitle.textContent = 'Add New Member';
+      memberId.value = '';
+      memberForm.reset();
+      deleteMemberBtn.classList.add('d-none');
+      currentMemberId = null;
+      memberFormModal.show();
+    }
+    
+    // Open modal for editing an existing member
+    function openEditModal(member) {
+      modalTitle.textContent = 'Edit Member';
+      memberId.value = member.id;
+      firstName.value = member.firstName;
+      lastName.value = member.lastName;
+      phone.value = member.phone;
+      dateOfBirth.value = member.dateOfBirth ? formatDateForInput(member.dateOfBirth) : '';
+      address.value = member.address || '';
+      tags.value = member.tags ? member.tags.join(', ') : '';
+      pictureUrl.value = member.pictureUrl || '';
+      deleteMemberBtn.classList.remove('d-none');
+      currentMemberId = member.id;
+      memberFormModal.show();
+    }
+    
+    // Save member (create or update)
+    async function saveMember() {
+      if (!memberForm.checkValidity()) {
+        memberForm.reportValidity();
+        return;
+      }
+      
+      // Prepare member data
+      const memberData = {
+        firstName: firstName.value.trim(),
+        lastName: lastName.value.trim(),
+        phone: phone.value.trim(),
+        dateOfBirth: dateOfBirth.value || null,
+        address: address.value.trim() || null,
+        tags: tags.value ? tags.value.split(',').map(tag => tag.trim()) : [],
+        pictureUrl: pictureUrl.value.trim() || null,
+        userId: JSON.parse(localStorage.getItem('user')).id
+      };
+      
+      try {
+        if (currentMemberId) {
+          // Update existing member
+          await updateMember(currentMemberId, memberData);
+          showAlert('Member updated successfully', 'success');
+        } else {
+          // Create new member
+          await createMember(memberData);
+          showAlert('Member added successfully', 'success');
+        }
+        
+        memberFormModal.hide();
+      } catch (error) {
+        showAlert(error.message, 'danger');
+      }
+    }
+    
+    // Handle delete button click
+    function confirmDelete() {
+      if (currentMemberId) {
+        memberFormModal.hide();
+        deleteConfirmModal.show();
+      }
+    }
+    
+    // Actually delete the member after confirmation
+    async function executeDelete() {
+      if (!currentMemberId) return;
+      
+      try {
+        await deleteMember(currentMemberId);
+        deleteConfirmModal.hide();
+        showAlert('Member deleted successfully', 'success');
+      } catch (error) {
+        showAlert(error.message, 'danger');
+      }
+    }
+    
+    // Helper: Format date for display
+    function formatDate(dateString) {
+      if (!dateString) return '';
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
+    }
+    
+    // Helper: Format date for input field (YYYY-MM-DD)
+    function formatDateForInput(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    }
+    
+    // Helper: Show alert message
+    function showAlert(message, type = 'info') {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+      alertDiv.style.zIndex = '1050';
+      alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      document.body.appendChild(alertDiv);
+      
+      // Auto dismiss after 5 seconds
+      setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => alertDiv.remove(), 150);
+      }, 5000);
+    }
+    
+    // Handle logout
+    function logout() {
+      localStorage.removeItem('user');
+      window.location.href = '/login.html';
+    }
+    
+    // Initialize the page
+    function init() {
+      checkAuth();
+      fetchMembers();
+      
+      // Event listeners
+      document.getElementById('addMemberBtn').addEventListener('click', openAddModal);
+      searchInput.addEventListener('input', filterMembers);
+      saveMemberBtn.addEventListener('click', saveMember);
+      deleteMemberBtn.addEventListener('click', confirmDelete);
+      confirmDeleteBtn.addEventListener('click', executeDelete);
+      document.getElementById('logoutButton').addEventListener('click', logout);
+    }
+    
+    // Start the app
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

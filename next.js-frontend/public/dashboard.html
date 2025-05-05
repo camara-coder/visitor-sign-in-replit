@@ -104,6 +104,9 @@
                         <a class="nav-link" href="/directory">Directory</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="/members">Members</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="/analytics">Analytics</a>
                     </li>
                 </ul>
@@ -148,6 +151,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="/members">
+                        <i class="bi bi-people-fill me-2"></i> Members
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="/analytics">
                         <i class="bi bi-graph-up me-2"></i> Analytics
                     </a>
@@ -177,7 +185,7 @@
 
             <!-- Statistics -->
             <div class="row mb-4">
-                <div class="col-md-3 mb-3">
+                <div class="col-md-4 mb-3">
                     <div class="stat-card primary p-3 h-100 rounded shadow-sm">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -190,7 +198,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-4 mb-3">
                     <div class="stat-card success p-3 h-100 rounded shadow-sm">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -203,7 +211,23 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-4 mb-3">
+                    <div class="stat-card purple p-3 h-100 rounded shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-primary">Total Members</h6>
+                                <h3 id="total-members">0</h3>
+                            </div>
+                            <div class="icon text-primary">
+                                <i class="bi bi-person-badge"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-4 mb-3">
                     <div class="stat-card warning p-3 h-100 rounded shadow-sm">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -216,7 +240,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-4 mb-3">
                     <div class="stat-card info p-3 h-100 rounded shadow-sm">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -225,6 +249,19 @@
                             </div>
                             <div class="icon text-info">
                                 <i class="bi bi-clock"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="stat-card secondary p-3 h-100 rounded shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-secondary">Directory Entries</h6>
+                                <h3 id="directory-count">15</h3>
+                            </div>
+                            <div class="icon text-secondary">
+                                <i class="bi bi-journal-richtext"></i>
                             </div>
                         </div>
                     </div>
