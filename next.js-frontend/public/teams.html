@@ -1171,12 +1171,12 @@
         memberOption.className = `member-option ${isSelected ? 'selected' : ''}`;
         memberOption.setAttribute('data-id', member.id);
         memberOption.innerHTML = `
-          ${member.picture_url ? 
-            `<img src="${member.picture_url}" alt="${member.first_name}" class="member-picture">` : 
+          ${member.pictureUrl ? 
+            `<img src="${member.pictureUrl}" alt="${member.firstName}" class="member-picture">` : 
             `<div class="empty-picture"><i class="fas fa-user"></i></div>`
           }
           <div class="member-info">
-            <h6 class="mb-0">${member.first_name} ${member.last_name}</h6>
+            <h6 class="mb-0">${member.firstName} ${member.lastName}</h6>
             <p class="text-muted small mb-0">${member.phone || 'No phone'}</p>
           </div>
           <div class="ms-auto">
