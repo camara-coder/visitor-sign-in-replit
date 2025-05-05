@@ -29,6 +29,7 @@ const inMemory = {
       createdAt: new Date().toISOString()
     }
   ],
+  teams: [],
   events: [
     {
       id: '1',

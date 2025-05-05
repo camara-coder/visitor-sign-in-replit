@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teams Management | Visitor Management System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+  <style>
+    .team-card {
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      border-radius: 12px;
+      overflow: hidden;
+      border: none;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      height: 100%;
+    }
+    .team-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    }
+    .team-card .card-header {
+      position: relative;
+      height: 120px;
+      background-size: cover;
+      background-position: center;
+      background-color: #3498db;
+      color: white;
+      font-weight: bold;
+      padding: 20px;
+      display: flex;
+      align-items: flex-end;
+    }
+    .team-card .card-header.no-image {
+      background: linear-gradient(45deg, #3498db, #2ecc71);
+    }
+    .team-card .card-header .team-name {
+      z-index: 2;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+    .team-card .card-header::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.7) 100%);
+      z-index: 1;
+    }
+    .team-card .card-body {
+      padding: 20px;
+    }
+    .team-card .director-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    .team-card .director-picture {
+      width: 48px;
+      height: 48px;
+      border-radius: 24px;
+      object-fit: cover;
+      margin-right: 12px;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background-color: #f0f0f0;
+    }
+    .team-card .empty-picture {
+      width: 48px;
+      height: 48px;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      background-color: #f0f0f0;
+      color: #aaa;
+      font-size: 1.2rem;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .team-card .member-count {
+      margin-top: 15px;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    .member-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 18px;
+      object-fit: cover;
+      margin-right: -10px;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background-color: #f0f0f0;
+    }
+    .member-avatar-placeholder {
+      width: 36px;
+      height: 36px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: -10px;
+      background-color: #f0f0f0;
+      color: #aaa;
+      font-size: 0.8rem;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .member-list {
+      display: flex;
+      margin-top: 10px;
+    }
+    .more-members {
+      width: 36px;
+      height: 36px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f8f9fa;
+      color: #666;
+      font-size: 0.7rem;
+      font-weight: bold;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .team-detail-header {
+      background-size: cover;
+      background-position: center;
+      padding: 60px 30px;
+      color: white;
+      position: relative;
+      margin-bottom: 30px;
+      border-radius: 12px;
+    }
+    .team-detail-header::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 100%);
+      border-radius: 12px;
+      z-index: 1;
+    }
+    .team-detail-header.no-image {
+      background: linear-gradient(45deg, #3498db, #2ecc71);
+    }
+    .team-detail-header .content {
+      position: relative;
+      z-index: 2;
+    }
+    .team-detail-header .director-info {
+      display: flex;
+      align-items: center;
+      margin-top: 20px;
+    }
+    .team-detail-header .director-picture {
+      width: 64px;
+      height: 64px;
+      border-radius: 32px;
+      object-fit: cover;
+      margin-right: 15px;
+      border: 3px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      background-color: rgba(255,255,255,0.1);
+    }
+    .team-detail-header .empty-picture {
+      width: 64px;
+      height: 64px;
+      border-radius: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      background-color: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 1.5rem;
+      border: 3px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .team-member-card {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      border: none;
+      margin-bottom: 20px;
+    }
+    .team-member-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    .team-member-card .member-picture {
+      width: 56px;
+      height: 56px;
+      border-radius: 28px;
+      object-fit: cover;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      background-color: #f0f0f0;
+    }
+    .team-member-card .empty-picture {
+      width: 56px;
+      height: 56px;
+      border-radius: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f0f0f0;
+      color: #aaa;
+      font-size: 1.5rem;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .team-member-card .card-footer {
+      background-color: transparent;
+      border-top: 1px solid #f0f0f0;
+      font-size: 0.8rem;
+      padding: 0.5rem 1rem;
+    }
+    .dropdown-menu {
+      box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    .dropdown-menu.show {
+      display: block;
+    }
+    .dropdown-item {
+      padding: 0.5rem 1rem;
+      color: #212529;
+      text-decoration: none;
+    }
+    .dropdown-item:hover {
+      background-color: #f8f9fa;
+      color: #16181b;
+    }
+    .tag {
+      display: inline-block;
+      background-color: #f0f0f0;
+      border-radius: 20px;
+      padding: 4px 10px;
+      margin-right: 5px;
+      margin-bottom: 5px;
+      font-size: 0.8rem;
+    }
+    .detail-action-buttons {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      z-index: 10;
+    }
+    .member-select-modal .member-option {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    .member-select-modal .member-option:hover {
+      background-color: #f8f9fa;
+    }
+    .member-select-modal .member-option.selected {
+      background-color: #e9f7fe;
+      border: 1px solid #b8e2f2;
+    }
+    .member-select-modal .member-picture {
+      width: 40px;
+      height: 40px;
+      border-radius: 20px;
+      margin-right: 12px;
+      object-fit: cover;
+    }
+    .member-select-modal .empty-picture {
+      width: 40px;
+      height: 40px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      background-color: #f0f0f0;
+      color: #aaa;
+      font-size: 1rem;
+    }
+    .member-select-modal .member-info {
+      flex-grow: 1;
+    }
+    .member-select-modal .member-filter {
+      margin-bottom: 20px;
+    }
+    .member-select-modal .filter-input {
+      border-radius: 20px;
+      padding-left: 40px;
+    }
+    .member-select-modal .filter-icon {
+      position: absolute;
+      left: 15px;
+      top: 10px;
+      color: #aaa;
+    }
+    .back-button {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      background-color: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: white;
+      transition: background-color 0.2s;
+    }
+    .back-button:hover {
+      background-color: rgba(255,255,255,0.3);
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <i class="fas fa-clipboard-list me-2"></i>
+        Visitor Management
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="/dashboard">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/directory">Visitor Directory</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/members">Members</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="/teams">Teams</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/schedule">Schedule</a>
+          </li>
+        </ul>
+        <ul class="navbar-nav">
+          <li class="nav-item">
+            <a id="logoutButton" class="nav-link" href="#"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container py-4">
+    <!-- Teams List View -->
+    <div id="teamsListView">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Teams Management</h1>
+        <div class="position-relative">
+          <button id="addTeamBtn" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> Create Team
+          </button>
+        </div>
+      </div>
+
+      <!-- Search and Filter -->
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="input-group">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <input type="text" id="searchInput" class="form-control" placeholder="Search teams...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Teams List -->
+      <div class="row" id="teamsList">
+        <div class="col-12 text-center py-5" id="loadingIndicator">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2">Loading teams...</p>
+        </div>
+        <div class="col-12 text-center py-5 d-none" id="noTeamsMessage">
+          <i class="fas fa-users fa-3x text-muted mb-3"></i>
+          <h3>No Teams Found</h3>
+          <p class="text-muted">Start by creating your first team using the "Create Team" button above.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Detail View -->
+    <div id="teamDetailView" class="d-none">
+      <div id="teamDetailContent"></div>
+    </div>
+  </div>
+
+  <!-- Team Form Modal -->
+  <div class="modal fade" id="teamFormModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">Create New Team</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="teamForm">
+            <input type="hidden" id="teamId">
+            <div class="mb-3">
+              <label for="teamName" class="form-label">Team Name *</label>
+              <input type="text" class="form-control" id="teamName" required>
+            </div>
+            <div class="mb-3">
+              <label for="teamDescription" class="form-label">Description</label>
+              <textarea class="form-control" id="teamDescription" rows="3"></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="teamPictureUrl" class="form-label">Team Banner Image URL</label>
+              <input type="url" class="form-control" id="teamPictureUrl" placeholder="https://example.com/image.jpg">
+              <div class="form-text">Use a wide banner image (1200x300 pixels recommended)</div>
+            </div>
+            <div class="mb-3">
+              <label for="teamDirector" class="form-label">Team Director</label>
+              <select class="form-select" id="teamDirector">
+                <option value="">No director assigned</option>
+                <!-- Options will be populated from members list -->
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Initial Team Members</label>
+              <button type="button" class="btn btn-outline-primary btn-sm ms-2" id="selectMembersBtn">
+                <i class="fas fa-users me-1"></i> Select Members
+              </button>
+              <div id="selectedMembersContainer" class="mt-2">
+                <div class="alert alert-info" id="noSelectedMembersMessage">
+                  <i class="fas fa-info-circle me-2"></i> No members selected
+                </div>
+                <div id="selectedMembersList" class="d-none"></div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger d-none" id="deleteTeamBtn">Delete</button>
+          <button type="button" class="btn btn-primary" id="saveTeamBtn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Member Selection Modal -->
+  <div class="modal fade member-select-modal" id="memberSelectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Select Team Members</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="member-filter position-relative">
+            <i class="fas fa-search filter-icon"></i>
+            <input type="text" id="memberFilterInput" class="form-control filter-input" placeholder="Search members...">
+          </div>
+          <div class="member-options" id="memberOptions">
+            <div class="text-center py-4">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-2">Loading members...</p>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmMemberSelectionBtn">Add Selected Members</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Members Modal -->
+  <div class="modal fade" id="addMembersModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Members to Team</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="member-filter position-relative">
+            <i class="fas fa-search filter-icon"></i>
+            <input type="text" id="addMemberFilterInput" class="form-control filter-input" placeholder="Search members...">
+          </div>
+          <div class="member-options" id="addMemberOptions">
+            <div class="text-center py-4">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-2">Loading members...</p>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmAddMembersBtn">Add Selected Members</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Deletion</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this team? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remove Member Confirmation Modal -->
+  <div class="modal fade" id="removeMemberConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Member Removal</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to remove this member from the team?</p>
+          <div id="removeMemberInfo" class="d-flex align-items-center mt-3 p-3 bg-light rounded">
+            <div class="empty-picture me-3">
+              <i class="fas fa-user"></i>
+            </div>
+            <div>
+              <h6 class="mb-0" id="removeMemberName">Member Name</h6>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmRemoveMemberBtn">Remove Member</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap & jQuery Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Team Management Scripts -->
+  <script>
+    // Global variables
+    let teams = [];
+    let members = [];
+    let currentTeamId = null;
+    let selectedMembers = new Map();
+    
+    // DOM elements
+    const teamsListView = document.getElementById('teamsListView');
+    const teamDetailView = document.getElementById('teamDetailView');
+    const teamDetailContent = document.getElementById('teamDetailContent');
+    const teamsList = document.getElementById('teamsList');
+    const searchInput = document.getElementById('searchInput');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const noTeamsMessage = document.getElementById('noTeamsMessage');
+    const teamFormModal = new bootstrap.Modal(document.getElementById('teamFormModal'));
+    const memberSelectModal = new bootstrap.Modal(document.getElementById('memberSelectModal'));
+    const addMembersModal = new bootstrap.Modal(document.getElementById('addMembersModal'));
+    const deleteConfirmModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+    const removeMemberConfirmModal = new bootstrap.Modal(document.getElementById('removeMemberConfirmModal'));
+    
+    // Form elements
+    const teamForm = document.getElementById('teamForm');
+    const modalTitle = document.getElementById('modalTitle');
+    const teamId = document.getElementById('teamId');
+    const teamName = document.getElementById('teamName');
+    const teamDescription = document.getElementById('teamDescription');
+    const teamPictureUrl = document.getElementById('teamPictureUrl');
+    const teamDirector = document.getElementById('teamDirector');
+    const selectedMembersContainer = document.getElementById('selectedMembersContainer');
+    const selectedMembersList = document.getElementById('selectedMembersList');
+    const noSelectedMembersMessage = document.getElementById('noSelectedMembersMessage');
+    const memberOptions = document.getElementById('memberOptions');
+    const addMemberOptions = document.getElementById('addMemberOptions');
+    const memberFilterInput = document.getElementById('memberFilterInput');
+    const addMemberFilterInput = document.getElementById('addMemberFilterInput');
+    const saveTeamBtn = document.getElementById('saveTeamBtn');
+    const deleteTeamBtn = document.getElementById('deleteTeamBtn');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const removeMemberName = document.getElementById('removeMemberName');
+    const confirmRemoveMemberBtn = document.getElementById('confirmRemoveMemberBtn');
+    
+    // Check if user is logged in
+    function checkAuth() {
+      const storedUser = localStorage.getItem('userData');
+      if (!storedUser) {
+        window.location.href = '/signin';
+      }
+    }
+    
+    // Fetch all teams
+    async function fetchTeams() {
+      loadingIndicator.classList.remove('d-none');
+      noTeamsMessage.classList.add('d-none');
+      
+      try {
+        const response = await fetch('/api/teams');
+        if (!response.ok) throw new Error('Failed to fetch teams');
+        
+        teams = await response.json();
+        renderTeams(teams);
+      } catch (error) {
+        console.error('Error fetching teams:', error);
+        showAlert('Failed to load teams: ' + error.message, 'danger');
+      } finally {
+        loadingIndicator.classList.add('d-none');
+        if (teams.length === 0) {
+          noTeamsMessage.classList.remove('d-none');
+        }
+      }
+    }
+    
+    // Fetch all members
+    async function fetchMembers() {
+      try {
+        const response = await fetch('/api/members');
+        if (!response.ok) throw new Error('Failed to fetch members');
+        
+        members = await response.json();
+        populateDirectorSelect();
+      } catch (error) {
+        console.error('Error fetching members:', error);
+        showAlert('Failed to load members: ' + error.message, 'danger');
+      }
+    }
+    
+    // Fetch team by ID with members
+    async function fetchTeam(id) {
+      try {
+        const response = await fetch(`/api/teams/${id}`);
+        if (!response.ok) throw new Error('Failed to fetch team');
+        
+        const team = await response.json();
+        renderTeamDetail(team);
+        return team;
+      } catch (error) {
+        console.error('Error fetching team:', error);
+        showAlert('Failed to load team: ' + error.message, 'danger');
+        return null;
+      }
+    }
+    
+    // Render teams list
+    function renderTeams(teamsToRender) {
+      // Clear current list except for loading and no teams message
+      const elementsToKeep = [loadingIndicator, noTeamsMessage];
+      while (teamsList.children.length > elementsToKeep.length) {
+        if (!elementsToKeep.includes(teamsList.children[0])) {
+          teamsList.removeChild(teamsList.children[0]);
+        } else {
+          teamsList.appendChild(teamsList.children[0]);
+        }
+      }
+      
+      if (teamsToRender.length === 0) {
+        noTeamsMessage.classList.remove('d-none');
+        return;
+      }
+      
+      noTeamsMessage.classList.add('d-none');
+      
+      // Add team cards
+      teamsToRender.forEach(team => {
+        const teamCard = document.createElement('div');
+        teamCard.className = 'col-md-6 col-lg-4 mb-4';
+        
+        // Display up to 5 members, plus "more" indicator if applicable
+        let memberAvatars = '';
+        const maxVisibleMembers = 5;
+        const memberCount = parseInt(team.member_count) || 0;
+        
+        if (memberCount > 0) {
+          memberAvatars = `
+            <div class="member-list">
+              <div class="more-members">+${memberCount}</div>
+            </div>
+          `;
+        }
+        
+        teamCard.innerHTML = `
+          <div class="card team-card" data-id="${team.id}">
+            <div class="card-header ${!team.picture_url ? 'no-image' : ''}" 
+                 ${team.picture_url ? `style="background-image: url('${team.picture_url}')"` : ''}>
+              <h5 class="team-name mb-0">${team.name}</h5>
+            </div>
+            <div class="card-body">
+              <div class="director-info">
+                ${team.director_id ? 
+                  `<div class="d-flex align-items-center w-100">
+                    ${team.director_picture ? 
+                      `<img src="${team.director_picture}" alt="Director" class="director-picture">` : 
+                      `<div class="empty-picture"><i class="fas fa-user"></i></div>`
+                    }
+                    <div>
+                      <span class="text-muted small">Team Director</span>
+                      <div class="fw-bold">${team.director_name || 'Unknown'}</div>
+                    </div>
+                  </div>` : 
+                  `<div class="text-muted small fst-italic">No director assigned</div>`
+                }
+              </div>
+              <div class="team-description">
+                <p class="small text-muted mb-0">${team.description || 'No description provided'}</p>
+              </div>
+              ${memberAvatars}
+              <div class="member-count">
+                <i class="fas fa-users me-1"></i> ${memberCount} member${memberCount !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Add click event to open team detail
+        teamCard.querySelector('.team-card').addEventListener('click', () => {
+          showTeamDetail(team.id);
+        });
+        
+        teamsList.appendChild(teamCard);
+      });
+    }
+    
+    // Render team detail view
+    function renderTeamDetail(team) {
+      // Clear current detail content
+      teamDetailContent.innerHTML = '';
+      
+      // Create member cards HTML
+      let memberCardsHtml = '';
+      if (team.members && team.members.length > 0) {
+        memberCardsHtml = team.members.map(member => `
+          <div class="col-md-6 col-lg-4">
+            <div class="card team-member-card">
+              <div class="card-body d-flex align-items-center">
+                ${member.picture_url ? 
+                  `<img src="${member.picture_url}" alt="${member.first_name}" class="member-picture me-3">` : 
+                  `<div class="empty-picture me-3"><i class="fas fa-user"></i></div>`
+                }
+                <div>
+                  <h6 class="mb-0">${member.first_name} ${member.last_name}</h6>
+                  <p class="text-muted small mb-0">${member.phone || 'No phone'}</p>
+                  <div class="mt-1">
+                    ${member.tags && member.tags.length > 0 ? 
+                      member.tags.slice(0, 2).map(tag => `<span class="tag">${tag}</span>`).join('') : 
+                      '<span class="text-muted small">No tags</span>'
+                    }
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-outline-danger ms-auto remove-member-btn" 
+                        data-id="${member.id}" 
+                        data-name="${member.first_name} ${member.last_name}">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="card-footer text-muted">
+                Joined: ${formatDate(member.joined_at)}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        memberCardsHtml = `
+          <div class="col-12 text-center py-5">
+            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+            <h5>No Members in this Team</h5>
+            <p class="text-muted">Add members using the button above.</p>
+          </div>
+        `;
+      }
+      
+      // Create team detail HTML
+      const detailHtml = `
+        <button class="back-button" id="backToListButton">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <div class="detail-action-buttons">
+          <button class="btn btn-light" id="editTeamButton">
+            <i class="fas fa-edit me-1"></i> Edit Team
+          </button>
+        </div>
+        <div class="team-detail-header ${!team.picture_url ? 'no-image' : ''}" 
+             ${team.picture_url ? `style="background-image: url('${team.picture_url}')"` : ''}>
+          <div class="content">
+            <h1>${team.name}</h1>
+            <p class="lead mb-4">${team.description || 'No description provided'}</p>
+            ${team.director_id ? 
+              `<div class="director-info">
+                ${team.director_picture ? 
+                  `<img src="${team.director_picture}" alt="Director" class="director-picture">` : 
+                  `<div class="empty-picture"><i class="fas fa-user"></i></div>`
+                }
+                <div>
+                  <span class="text-light opacity-75">Team Director</span>
+                  <h5 class="mb-0">${team.director_name || 'Unknown'}</h5>
+                </div>
+              </div>` : 
+              `<div class="director-info">
+                <div class="empty-picture"><i class="fas fa-user-slash"></i></div>
+                <div>
+                  <span class="text-light opacity-75">No director assigned</span>
+                </div>
+              </div>`
+            }
+          </div>
+        </div>
+        
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <h3>Team Members</h3>
+          </div>
+          <div class="col-md-6 text-md-end">
+            <button class="btn btn-primary" id="addMembersButton">
+              <i class="fas fa-user-plus me-1"></i> Add Members
+            </button>
+          </div>
+        </div>
+        
+        <div class="row" id="teamMembersList">
+          ${memberCardsHtml}
+        </div>
+      `;
+      
+      // Add detail content to view
+      teamDetailContent.innerHTML = detailHtml;
+      
+      // Add event listeners to buttons
+      document.getElementById('backToListButton').addEventListener('click', showTeamsList);
+      document.getElementById('editTeamButton').addEventListener('click', () => {
+        openEditModal(team);
+      });
+      document.getElementById('addMembersButton').addEventListener('click', () => {
+        openAddMembersModal(team.id);
+      });
+      
+      // Add remove member event listeners
+      const removeButtons = document.querySelectorAll('.remove-member-btn');
+      removeButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openRemoveMemberModal(team.id, button.dataset.id, button.dataset.name);
+        });
+      });
+      
+      // Show detail view, hide list view
+      teamDetailView.classList.remove('d-none');
+      teamsListView.classList.add('d-none');
+    }
+    
+    // Show team detail view
+    function showTeamDetail(teamId) {
+      currentTeamId = teamId;
+      fetchTeam(teamId);
+    }
+    
+    // Show teams list view
+    function showTeamsList() {
+      currentTeamId = null;
+      teamDetailView.classList.add('d-none');
+      teamsListView.classList.remove('d-none');
+      fetchTeams();
+    }
+    
+    // Filter teams based on search input
+    function filterTeams() {
+      const searchTerm = searchInput.value.toLowerCase();
+      
+      if (!searchTerm) {
+        renderTeams(teams);
+        return;
+      }
+      
+      const filtered = teams.filter(team => {
+        return (
+          team.name.toLowerCase().includes(searchTerm) || 
+          (team.description && team.description.toLowerCase().includes(searchTerm)) ||
+          (team.director_name && team.director_name.toLowerCase().includes(searchTerm))
+        );
+      });
+      
+      renderTeams(filtered);
+    }
+    
+    // Populate director select dropdown with members
+    function populateDirectorSelect() {
+      // Clear existing options except the empty option
+      while (teamDirector.options.length > 1) {
+        teamDirector.remove(1);
+      }
+      
+      // Add members as options
+      members.forEach(member => {
+        const option = document.createElement('option');
+        option.value = member.id;
+        option.textContent = `${member.first_name} ${member.last_name}`;
+        teamDirector.appendChild(option);
+      });
+    }
+    
+    // Create new team
+    async function createTeam(teamData) {
+      try {
+        const response = await fetch('/api/teams', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(teamData)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to create team');
+        }
+        
+        const newTeam = await response.json();
+        teams.unshift(newTeam); // Add to beginning of array
+        
+        // If we're in list view, refresh the list
+        if (teamDetailView.classList.contains('d-none')) {
+          renderTeams(teams);
+        } else {
+          // If we're in detail view, show the new team
+          showTeamDetail(newTeam.id);
+        }
+        
+        return newTeam;
+      } catch (error) {
+        console.error('Error creating team:', error);
+        throw error;
+      }
+    }
+    
+    // Update existing team
+    async function updateTeam(teamId, teamData) {
+      try {
+        const response = await fetch(`/api/teams/${teamId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(teamData)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to update team');
+        }
+        
+        const updatedTeam = await response.json();
+        
+        // Update in local array
+        const index = teams.findIndex(t => t.id === teamId);
+        if (index !== -1) {
+          teams[index] = updatedTeam;
+        }
+        
+        // If we're in list view, refresh the list
+        if (teamDetailView.classList.contains('d-none')) {
+          renderTeams(teams);
+        } else {
+          // If we're in detail view, refresh the current team
+          fetchTeam(teamId);
+        }
+        
+        return updatedTeam;
+      } catch (error) {
+        console.error('Error updating team:', error);
+        throw error;
+      }
+    }
+    
+    // Delete team
+    async function deleteTeam(teamId) {
+      try {
+        const response = await fetch(`/api/teams/${teamId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to delete team');
+        }
+        
+        // Remove from local array
+        teams = teams.filter(t => t.id !== teamId);
+        
+        // Go back to list view
+        showTeamsList();
+      } catch (error) {
+        console.error('Error deleting team:', error);
+        throw error;
+      }
+    }
+    
+    // Add members to a team
+    async function addMembersToTeam(teamId, memberIds) {
+      try {
+        const response = await fetch(`/api/teams/${teamId}/members`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ memberIds })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to add members');
+        }
+        
+        // Refresh the current team
+        fetchTeam(teamId);
+      } catch (error) {
+        console.error('Error adding members:', error);
+        throw error;
+      }
+    }
+    
+    // Remove a member from a team
+    async function removeMemberFromTeam(teamId, memberId) {
+      try {
+        const response = await fetch(`/api/teams/${teamId}/members/${memberId}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to remove member');
+        }
+        
+        // Refresh the current team
+        fetchTeam(teamId);
+      } catch (error) {
+        console.error('Error removing member:', error);
+        throw error;
+      }
+    }
+    
+    // Open modal for adding a new team
+    function openAddModal() {
+      modalTitle.textContent = 'Create New Team';
+      teamId.value = '';
+      teamForm.reset();
+      deleteTeamBtn.classList.add('d-none');
+      currentTeamId = null;
+      
+      // Clear selected members
+      selectedMembers.clear();
+      updateSelectedMembersList();
+      
+      teamFormModal.show();
+    }
+    
+    // Open modal for editing an existing team
+    function openEditModal(team) {
+      modalTitle.textContent = 'Edit Team';
+      teamId.value = team.id;
+      teamName.value = team.name;
+      teamDescription.value = team.description || '';
+      teamPictureUrl.value = team.picture_url || '';
+      teamDirector.value = team.director_id || '';
+      deleteTeamBtn.classList.remove('d-none');
+      currentTeamId = team.id;
+      
+      // Clear selected members (they're already part of the team)
+      selectedMembers.clear();
+      updateSelectedMembersList();
+      
+      teamFormModal.show();
+    }
+    
+    // Open modal for selecting members
+    function openMemberSelectModal() {
+      // Populate member options
+      populateMemberOptions(memberOptions, true);
+      memberFilterInput.value = '';
+      memberSelectModal.show();
+    }
+    
+    // Open modal for adding members to an existing team
+    function openAddMembersModal(teamId) {
+      currentTeamId = teamId;
+      
+      // Fetch current team to get existing members
+      fetchTeam(teamId).then(team => {
+        // Populate member options, excluding existing team members
+        populateMemberOptions(addMemberOptions, false, team.members || []);
+        addMemberFilterInput.value = '';
+        addMembersModal.show();
+      });
+    }
+    
+    // Open modal for removing a member
+    function openRemoveMemberModal(teamId, memberId, memberName) {
+      currentTeamId = teamId;
+      removeMemberName.textContent = memberName;
+      
+      // Set up the confirm button to remove this specific member
+      confirmRemoveMemberBtn.setAttribute('data-team-id', teamId);
+      confirmRemoveMemberBtn.setAttribute('data-member-id', memberId);
+      
+      removeMemberConfirmModal.show();
+    }
+    
+    // Populate member options in selection modal
+    function populateMemberOptions(container, forTeamCreation, existingMembers = []) {
+      container.innerHTML = '';
+      
+      // Create a Set of existing member IDs for easy lookup
+      const existingMemberIds = new Set(existingMembers.map(m => m.id.toString()));
+      
+      // Filter out members that are already in the team
+      const availableMembers = forTeamCreation ? 
+        members : 
+        members.filter(m => !existingMemberIds.has(m.id.toString()));
+      
+      if (availableMembers.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-4">
+            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+            <h5>No Available Members</h5>
+            <p class="text-muted">All members are already part of this team.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      availableMembers.forEach(member => {
+        const isSelected = forTeamCreation && selectedMembers.has(member.id.toString());
+        const memberOption = document.createElement('div');
+        memberOption.className = `member-option ${isSelected ? 'selected' : ''}`;
+        memberOption.setAttribute('data-id', member.id);
+        memberOption.innerHTML = `
+          ${member.picture_url ? 
+            `<img src="${member.picture_url}" alt="${member.first_name}" class="member-picture">` : 
+            `<div class="empty-picture"><i class="fas fa-user"></i></div>`
+          }
+          <div class="member-info">
+            <h6 class="mb-0">${member.first_name} ${member.last_name}</h6>
+            <p class="text-muted small mb-0">${member.phone || 'No phone'}</p>
+          </div>
+          <div class="ms-auto">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" ${isSelected ? 'checked' : ''}>
+            </div>
+          </div>
+        `;
+        
+        // Add click event for selection
+        memberOption.addEventListener('click', () => {
+          const memberId = member.id.toString();
+          if (forTeamCreation) {
+            // For team creation, toggle selection
+            if (selectedMembers.has(memberId)) {
+              selectedMembers.delete(memberId);
+              memberOption.classList.remove('selected');
+              memberOption.querySelector('input').checked = false;
+            } else {
+              selectedMembers.set(memberId, member);
+              memberOption.classList.add('selected');
+              memberOption.querySelector('input').checked = true;
+            }
+          } else {
+            // For adding to existing team, just toggle the checkbox
+            const checkbox = memberOption.querySelector('input');
+            checkbox.checked = !checkbox.checked;
+            memberOption.classList.toggle('selected', checkbox.checked);
+          }
+        });
+        
+        container.appendChild(memberOption);
+      });
+    }
+    
+    // Update the list of selected members in the team form
+    function updateSelectedMembersList() {
+      if (selectedMembers.size === 0) {
+        selectedMembersList.classList.add('d-none');
+        noSelectedMembersMessage.classList.remove('d-none');
+        return;
+      }
+      
+      selectedMembersList.classList.remove('d-none');
+      noSelectedMembersMessage.classList.add('d-none');
+      
+      // Clear current list
+      selectedMembersList.innerHTML = '';
+      
+      // Add selected members
+      selectedMembers.forEach(member => {
+        const memberItem = document.createElement('div');
+        memberItem.className = 'd-flex align-items-center mb-2 p-2 bg-light rounded';
+        memberItem.innerHTML = `
+          ${member.picture_url ? 
+            `<img src="${member.picture_url}" alt="${member.first_name}" class="member-picture" style="width: 36px; height: 36px; border-radius: 18px; object-fit: cover; margin-right: 10px;">` : 
+            `<div class="empty-picture" style="width: 36px; height: 36px; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin-right: 10px; background-color: #f0f0f0; color: #aaa;"><i class="fas fa-user"></i></div>`
+          }
+          <div class="flex-grow-1">
+            <h6 class="mb-0">${member.first_name} ${member.last_name}</h6>
+            <small class="text-muted">${member.phone || 'No phone'}</small>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-danger remove-selected-btn" data-id="${member.id}">
+            <i class="fas fa-times"></i>
+          </button>
+        `;
+        
+        // Add click event to remove button
+        memberItem.querySelector('.remove-selected-btn').addEventListener('click', () => {
+          selectedMembers.delete(member.id.toString());
+          updateSelectedMembersList();
+        });
+        
+        selectedMembersList.appendChild(memberItem);
+      });
+    }
+    
+    // Filter member options based on search input
+    function filterMemberOptions(container, input) {
+      const searchTerm = input.value.toLowerCase();
+      const options = container.querySelectorAll('.member-option');
+      
+      options.forEach(option => {
+        const text = option.textContent.toLowerCase();
+        option.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+      });
+    }
+    
+    // Save team (create or update)
+    async function saveTeam() {
+      if (!teamForm.checkValidity()) {
+        teamForm.reportValidity();
+        return;
+      }
+      
+      // Prepare team data
+      const teamData = {
+        name: teamName.value.trim(),
+        description: teamDescription.value.trim() || null,
+        pictureUrl: teamPictureUrl.value.trim() || null,
+        directorId: teamDirector.value || null,
+        userId: JSON.parse(localStorage.getItem('userData')).id
+      };
+      
+      // Add members for new team
+      if (!currentTeamId && selectedMembers.size > 0) {
+        teamData.memberIds = Array.from(selectedMembers.keys());
+      }
+      
+      try {
+        if (currentTeamId) {
+          // Update existing team
+          await updateTeam(currentTeamId, teamData);
+          showAlert('Team updated successfully', 'success');
+        } else {
+          // Create new team
+          await createTeam(teamData);
+          showAlert('Team created successfully', 'success');
+        }
+        
+        teamFormModal.hide();
+      } catch (error) {
+        showAlert(error.message, 'danger');
+      }
+    }
+    
+    // Handle adding selected members to a team
+    async function addSelectedMembersToTeam() {
+      const selectedOptions = document.querySelectorAll('#addMemberOptions .member-option.selected');
+      const memberIds = Array.from(selectedOptions).map(option => option.dataset.id);
+      
+      if (memberIds.length === 0) {
+        showAlert('No members selected', 'warning');
+        return;
+      }
+      
+      try {
+        await addMembersToTeam(currentTeamId, memberIds);
+        addMembersModal.hide();
+        showAlert(`Added ${memberIds.length} member${memberIds.length !== 1 ? 's' : ''} to the team`, 'success');
+      } catch (error) {
+        showAlert(error.message, 'danger');
+      }
+    }
+    
+    // Handle delete button click
+    function confirmDelete() {
+      if (currentTeamId) {
+        teamFormModal.hide();
+        deleteConfirmModal.show();
+      }
+    }
+    
+    // Actually delete the team after confirmation
+    async function executeDelete() {
+      if (!currentTeamId) return;
+      
+      try {
+        await deleteTeam(currentTeamId);
+        deleteConfirmModal.hide();
+        showAlert('Team deleted successfully', 'success');
+      } catch (error) {
+        showAlert(error.message, 'danger');
+      }
+    }
+    
+    // Actually remove a member after confirmation
+    async function executeRemoveMember() {
+      const teamId = confirmRemoveMemberBtn.getAttribute('data-team-id');
+      const memberId = confirmRemoveMemberBtn.getAttribute('data-member-id');
+      
+      if (!teamId || !memberId) return;
+      
+      try {
+        await removeMemberFromTeam(teamId, memberId);
+        removeMemberConfirmModal.hide();
+        showAlert('Member removed from team', 'success');
+      } catch (error) {
+        showAlert(error.message, 'danger');
+      }
+    }
+    
+    // Helper: Format date for display
+    function formatDate(dateString) {
+      if (!dateString) return '';
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
+    }
+    
+    // Helper: Show alert message
+    function showAlert(message, type = 'info') {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+      alertDiv.style.zIndex = '1050';
+      alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      document.body.appendChild(alertDiv);
+      
+      // Auto dismiss after 5 seconds
+      setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => alertDiv.remove(), 150);
+      }, 5000);
+    }
+    
+    // Handle logout
+    function logout() {
+      localStorage.removeItem('userData');
+      window.location.href = '/signin';
+    }
+    
+    // Initialize the page
+    function init() {
+      checkAuth();
+      fetchTeams();
+      fetchMembers();
+      
+      // Event listeners
+      document.getElementById('addTeamBtn').addEventListener('click', openAddModal);
+      document.getElementById('selectMembersBtn').addEventListener('click', openMemberSelectModal);
+      document.getElementById('confirmMemberSelectionBtn').addEventListener('click', () => {
+        memberSelectModal.hide();
+        updateSelectedMembersList();
+      });
+      document.getElementById('confirmAddMembersBtn').addEventListener('click', addSelectedMembersToTeam);
+      searchInput.addEventListener('input', filterTeams);
+      memberFilterInput.addEventListener('input', () => filterMemberOptions(memberOptions, memberFilterInput));
+      addMemberFilterInput.addEventListener('input', () => filterMemberOptions(addMemberOptions, addMemberFilterInput));
+      saveTeamBtn.addEventListener('click', saveTeam);
+      deleteTeamBtn.addEventListener('click', confirmDelete);
+      confirmDeleteBtn.addEventListener('click', executeDelete);
+      confirmRemoveMemberBtn.addEventListener('click', executeRemoveMember);
+      document.getElementById('logoutButton').addEventListener('click', logout);
+    }
+    
+    // Start the app
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
