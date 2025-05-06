@@ -343,6 +343,9 @@ if [ ! -f "${TEMPLATE_FILE}" ]; then
 fi
 
 # Deploy or update the CloudFormation stack
+echo "Step 4.1: First creating/updating the stack with an empty ConnectionArn"
+echo "This will create the CodeStar GitHub connection in PENDING state"
+
 aws cloudformation deploy \
     --template-file "${TEMPLATE_FILE}" \
     --stack-name $STACK_NAME \
@@ -359,11 +362,91 @@ aws cloudformation deploy \
         ArtifactBucketName=$ARTIFACT_BUCKET \
         PlatformVersion="$PLATFORM_VERSION" \
         InstanceType=$INSTANCE_TYPE \
+        GitHubConnectionArn="" \
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
     --region $REGION \
     --tags \
         Application=$APP_NAME \
-        Environment=$ENVIRONMENT
+        Environment=$ENVIRONMENT \
+    --no-fail-on-empty-changeset
+
+echo ""
+echo "Step 4.2: Retrieving the newly created GitHub connection ARN"
+CONNECTION_ARN=$(aws cloudformation describe-stacks \
+    --stack-name $STACK_NAME \
+    --query "Stacks[0].Outputs[?OutputKey=='CodeStarConnectionARN'].OutputValue" \
+    --output text \
+    --region $REGION)
+
+echo "GitHub Connection ARN: $CONNECTION_ARN"
+echo ""
+echo "Step 4.3: Checking connection status"
+
+if [ -n "$CONNECTION_ARN" ]; then
+    CONNECTION_STATUS=$(aws codestar-connections get-connection --connection-arn "$CONNECTION_ARN" --query "ConnectionStatus" --output text --region $REGION)
+    echo "Current connection status: $CONNECTION_STATUS"
+    
+    if [ "$CONNECTION_STATUS" == "PENDING" ]; then
+        echo ""
+        echo -e "${RED}==================================================================${NC}"
+        echo -e "${RED}                IMPORTANT: MANUAL ACTION REQUIRED                ${NC}"
+        echo -e "${RED}==================================================================${NC}"
+        echo -e "${YELLOW}The GitHub connection is in PENDING state and needs to be manually activated.${NC}"
+        echo -e "${YELLOW}Please complete these steps:${NC}"
+        echo -e "1. Go to: ${CYAN}https://console.aws.amazon.com/codesuite/settings/connections${NC}"
+        echo -e "2. Select region: ${CYAN}$REGION${NC}"
+        echo -e "3. Find connection: ${CYAN}${APP_NAME}-github-connection${NC}"
+        echo -e "4. Click 'Update pending connection'"
+        echo -e "5. Complete the GitHub authorization flow"
+        echo -e "6. Return here and continue when the connection is in AVAILABLE state"
+        echo ""
+        read -p "Press Enter once you've activated the GitHub connection in the AWS Console..."
+        
+        # Verify the connection status again
+        CONNECTION_STATUS=$(aws codestar-connections get-connection --connection-arn "$CONNECTION_ARN" --query "ConnectionStatus" --output text --region $REGION)
+        if [ "$CONNECTION_STATUS" == "AVAILABLE" ]; then
+            echo -e "${GREEN}GitHub connection is now active!${NC}"
+            
+            # Now update the stack with the activated connection ARN
+            echo "Step 4.4: Updating stack with the activated GitHub connection"
+            aws cloudformation deploy \
+                --template-file "${TEMPLATE_FILE}" \
+                --stack-name $STACK_NAME \
+                --parameter-overrides \
+                    AppName=$APP_NAME \
+                    EnvironmentName=$ENVIRONMENT \
+                    GitHubOwner=$GITHUB_OWNER \
+                    GitHubRepo=$GITHUB_REPO \
+                    GitHubBranch=$GITHUB_BRANCH \
+                    ElasticBeanstalkApplicationName=$EB_APP_NAME \
+                    ElasticBeanstalkEnvironmentName=$EB_ENV_NAME \
+                    DatabasePassword=$DB_PASSWORD \
+                    SessionSecret=$SESSION_SECRET \
+                    ArtifactBucketName=$ARTIFACT_BUCKET \
+                    PlatformVersion="$PLATFORM_VERSION" \
+                    InstanceType=$INSTANCE_TYPE \
+                    GitHubConnectionArn="$CONNECTION_ARN" \
+                --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+                --region $REGION \
+                --tags \
+                    Application=$APP_NAME \
+                    Environment=$ENVIRONMENT \
+                --no-fail-on-empty-changeset
+        else
+            echo -e "${YELLOW}GitHub connection status: $CONNECTION_STATUS${NC}"
+            echo -e "${YELLOW}You can manually update the stack later when the connection is AVAILABLE.${NC}"
+            echo -e "Use this command:"
+            echo -e "${CYAN}aws cloudformation deploy --template-file \"${TEMPLATE_FILE}\" --stack-name $STACK_NAME --parameter-overrides GitHubConnectionArn=\"$CONNECTION_ARN\" --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --region $REGION${NC}"
+        fi
+    elif [ "$CONNECTION_STATUS" == "AVAILABLE" ]; then
+        echo -e "${GREEN}GitHub connection is already active!${NC}"
+    else
+        echo -e "${YELLOW}GitHub connection status: $CONNECTION_STATUS${NC}"
+    fi
+else
+    echo -e "${RED}Failed to retrieve GitHub connection ARN.${NC}"
+    echo -e "${YELLOW}Please check the CloudFormation stack for any issues.${NC}"
+fi
 
 # Check if deployment was successful
 if [ $? -eq 0 ]; then

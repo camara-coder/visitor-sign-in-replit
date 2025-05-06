@@ -29,7 +29,10 @@ Parameters:
     Type: String
     Default: main
   
-# GitHubToken parameter removed - now using CodeStar Connections instead
+  GitHubConnectionArn:
+    Description: ARN of the CodeStar Connection to GitHub (can be provided after manual activation)
+    Type: String
+    Default: ""
   
   ElasticBeanstalkApplicationName:
     Description: Name of the Elastic Beanstalk application
@@ -262,7 +265,7 @@ Resources:
                 Provider: CodeStarSourceConnection
                 Version: '1'
               Configuration:
-                ConnectionArn: !GetAtt GitHubConnection.ConnectionArn
+                ConnectionArn: !Ref GitHubConnectionArn
                 FullRepositoryId: !Sub ${GitHubOwner}/${GitHubRepo}
                 BranchName: !Ref GitHubBranch
                 OutputArtifactFormat: 'CODE_ZIP'
