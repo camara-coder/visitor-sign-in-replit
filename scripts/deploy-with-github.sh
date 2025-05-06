@@ -252,8 +252,8 @@ else
     fi
 fi
 
-# Step 3: Create S3 bucket for artifacts
-echo -e "${CYAN}== Step 3: Creating S3 bucket for artifacts ==${NC}"
+# Step 3: Create or configure S3 bucket for artifacts
+echo -e "${CYAN}== Step 3: Creating or configuring S3 bucket for artifacts ==${NC}"
 if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
     echo -e "${YELLOW}Creating S3 bucket: $ARTIFACT_BUCKET${NC}"
     
@@ -308,6 +308,34 @@ if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
     fi
 else
     echo -e "${GREEN}S3 bucket already exists!${NC}"
+    
+    # Verify bucket versioning and encryption settings
+    VERSIONING_STATUS=$(aws s3api get-bucket-versioning --bucket "$ARTIFACT_BUCKET" --query "Status" --output text 2>/dev/null || echo "NotEnabled")
+    if [[ "$VERSIONING_STATUS" != "Enabled" ]]; then
+        echo -e "${YELLOW}Enabling versioning on existing bucket...${NC}"
+        aws s3api put-bucket-versioning --bucket "$ARTIFACT_BUCKET" --versioning-configuration Status=Enabled
+        echo -e "${GREEN}Bucket versioning enabled.${NC}"
+    else
+        echo -e "${GREEN}Bucket versioning already enabled.${NC}"
+    fi
+    
+    # Check if bucket encryption is enabled
+    ENCRYPTION_STATUS=$(aws s3api get-bucket-encryption --bucket "$ARTIFACT_BUCKET" 2>/dev/null || echo "NotEnabled")
+    if [[ "$ENCRYPTION_STATUS" == "NotEnabled" ]]; then
+        echo -e "${YELLOW}Enabling encryption on existing bucket...${NC}"
+        aws s3api put-bucket-encryption --bucket "$ARTIFACT_BUCKET" --server-side-encryption-configuration '{
+            "Rules": [
+                {
+                    "ApplyServerSideEncryptionByDefault": {
+                        "SSEAlgorithm": "AES256"
+                    }
+                }
+            ]
+        }'
+        echo -e "${GREEN}Bucket encryption enabled.${NC}"
+    else
+        echo -e "${GREEN}Bucket encryption already enabled.${NC}"
+    fi
 fi
 
 # Step 4: Deploy CloudFormation stack

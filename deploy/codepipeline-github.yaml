@@ -102,6 +102,8 @@ Resources:
   # S3 Bucket for build artifacts
   ArtifactBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Ref ArtifactBucketName
       VersioningConfiguration:
