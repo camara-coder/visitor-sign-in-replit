@@ -29,10 +29,7 @@ Parameters:
     Type: String
     Default: main
   
-  GitHubToken:
-    Description: GitHub OAuth token
-    Type: String
-    NoEcho: true
+# GitHubToken parameter removed - now using CodeStar Connections instead
   
   ElasticBeanstalkApplicationName:
     Description: Name of the Elastic Beanstalk application

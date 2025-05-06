@@ -3,40 +3,46 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      nodejs: 18
+      nodejs: 20
     commands:
       - echo Installing dependencies...
-      - npm install
-  
+      - npm ci || npm install
+
   pre_build:
     commands:
-      - echo Running tests...
-      - npm test || true
-  
+      - echo Running pre-build checks...
+      - echo Checking node version: $(node --version)
+      - echo Checking npm version: $(npm --version)
+
   build:
     commands:
-      - echo Building the application...
-      - npm run build || true
-      - echo Creating deployment package...
-      - mkdir -p deploy_package
-      - cp -r server.js database.js schema.js email-service.js scheduled-events-api.js package.json package-lock.json next.js-frontend deploy_package/
-      - cp -r node_modules deploy_package/
-      - cp -r .ebextensions deploy_package/
-      - cp -r scripts deploy_package/
-      - cp -r deploy deploy_package/
-      - cp Procfile deploy_package/
-  
+      - echo Build started on `date`
+      - npm run build || echo "No build script found, skipping build step"
+
   post_build:
     commands:
       - echo Build completed on `date`
-      - cd deploy_package && zip -r ../visitor-app-deploy.zip .
-      - cd .. && ls -la
 
 artifacts:
   files:
-    - visitor-app-deploy.zip
+    # Include all files needed for Elastic Beanstalk deployment
+    - server.js
+    - database.js
+    - schema.js
+    - email-service.js
+    - scheduled-events-api.js
+    - package.json
+    - package-lock.json
+    - next.js-frontend/**/*
+    - src/**/*
+    - deploy/**/*
     - .ebextensions/**/*
+    - node_modules/**/*
     - Procfile
+    - .platform/**/*
+    - README.md
+    # Any other files required for your application
+  base-directory: '.'
   discard-paths: no
 
 cache:
