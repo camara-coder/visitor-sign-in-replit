@@ -242,7 +242,7 @@ Resources:
   GitHubConnection:
     Type: AWS::CodeStarConnections::Connection
     Properties:
-      ConnectionName: !Sub ${AppName}-github-connection
+      ConnectionName: !Sub ${AppName}-gh-conn
       ProviderType: GitHub
 
   # CodePipeline
