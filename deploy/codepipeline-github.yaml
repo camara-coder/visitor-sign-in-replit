@@ -166,6 +166,13 @@ Resources:
                   - 'ecr:ListImages'
                   - 'ecr:DeleteRepository'
                   - 'ecr:TagResource'
+                  # Elastic Beanstalk permissions
+                  - 'elasticbeanstalk:CreateApplicationVersion'
+                  - 'elasticbeanstalk:UpdateEnvironment'
+                  - 'elasticbeanstalk:DescribeEnvironments'
+                  - 'elasticbeanstalk:DescribeApplications'
+                  - 'elasticbeanstalk:DescribeEvents'
+                  - 'elasticbeanstalk:CheckDNSAvailability'
                 Resource: '*'
   
   CodePipelineServiceRole:
@@ -253,6 +260,13 @@ Resources:
             Value: !Ref SessionSecret
           - Name: EMAIL_SERVICE_ENABLED
             Value: !Ref EmailServiceEnabled
+          # Variables for Elastic Beanstalk deployment
+          - Name: ELASTIC_BEANSTALK_APP
+            Value: !Ref ElasticBeanstalkApplicationName
+          - Name: ELASTIC_BEANSTALK_ENV
+            Value: !Ref ElasticBeanstalkEnvironmentName
+          - Name: ARTIFACT_BUCKET
+            Value: !Ref ArtifactBucketName
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec.yml
@@ -341,10 +355,10 @@ Resources:
               OutputArtifacts:
                 - Name: SourceCode
         
-        # Build Stage
-        - Name: Build
+        # Build and Deploy Combined Stage (simplifying to reduce potential validation errors)
+        - Name: BuildAndDeploy
           Actions:
-            - Name: BuildAction
+            - Name: BuildAndDeployAction
               ActionTypeId:
                 Category: Build
                 Owner: AWS
@@ -355,21 +369,6 @@ Resources:
               InputArtifacts:
                 - Name: SourceCode
               OutputArtifacts:
-                - Name: BuildOutput
-        
-        # Deploy Stage
-        - Name: Deploy
-          Actions:
-            - Name: DeployToElasticBeanstalk
-              ActionTypeId:
-                Category: Deploy
-                Owner: AWS
-                Provider: ElasticBeanstalk
-                Version: '1'
-              Configuration:
-                ApplicationName: !Ref ElasticBeanstalkApplicationName
-                EnvironmentName: !Ref ElasticBeanstalkEnvironmentName
-              InputArtifacts:
                 - Name: BuildOutput
 
 Outputs:

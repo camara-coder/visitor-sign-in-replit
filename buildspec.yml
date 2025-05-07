@@ -22,6 +22,14 @@ phases:
   post_build:
     commands:
       - echo Build completed on `date`
+      - echo Preparing for Elastic Beanstalk deployment
+      - aws elasticbeanstalk describe-environments --environment-names $ELASTIC_BEANSTALK_ENV || echo "Setting up EB deployment"
+      - echo Creating application bundle
+      - zip -r deploy.zip . -x "*.git*" -x "terraform/*" -x "scripts/*" -x "lambda-functions/*" -x "lambda/*"
+      - echo Deploying to Elastic Beanstalk
+      - aws s3 cp deploy.zip s3://$ARTIFACT_BUCKET/deploy-$CODEBUILD_BUILD_NUMBER.zip
+      - aws elasticbeanstalk create-application-version --application-name $ELASTIC_BEANSTALK_APP --version-label v-$CODEBUILD_BUILD_NUMBER --source-bundle S3Bucket=$ARTIFACT_BUCKET,S3Key=deploy-$CODEBUILD_BUILD_NUMBER.zip
+      - aws elasticbeanstalk update-environment --environment-name $ELASTIC_BEANSTALK_ENV --version-label v-$CODEBUILD_BUILD_NUMBER
 
 artifacts:
   files:
