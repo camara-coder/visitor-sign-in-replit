@@ -110,8 +110,11 @@ Resources:
       ApplicationName: !Ref ElasticBeanstalkApplication
       EnvironmentName: !Ref ElasticBeanstalkEnvironmentName
       SolutionStackName: !Sub "64bit Amazon Linux 2 v5.8.0 running ${PlatformVersion}"
-      ServiceRole: !Ref ElasticBeanstalkServiceRole
       OptionSettings:
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: ServiceRole
+          Value: !Ref ElasticBeanstalkServiceRole
+          
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: InstanceType
           Value: !Ref InstanceType
