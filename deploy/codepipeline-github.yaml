@@ -179,9 +179,35 @@ Resources:
               Service: codepipeline.amazonaws.com
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess'
         - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
-        - 'arn:aws:iam::aws:policy/AWSElasticBeanstalkFullAccess'
+      # Using inline policies instead of managed policies to avoid issues with non-existent policies
+      Policies:
+        - PolicyName: CodeBuildAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'codebuild:*'
+                Resource: '*'
+        - PolicyName: ElasticBeanstalkAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'elasticbeanstalk:*'
+                  - 'ec2:*'
+                  - 'ecs:*'
+                  - 'ecr:*'
+                  - 'cloudformation:*'
+                  - 'autoscaling:*'
+                  - 'cloudwatch:*'
+                  - 's3:*'
+                  - 'sns:*'
+                  - 'rds:*'
+                  - 'logs:*'
+                Resource: '*'
   
   # Create IAM policy for CodePipeline to access GitHub
   CodePipelineGitHubPolicy:
