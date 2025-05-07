@@ -28,13 +28,7 @@ Parameters:
       - t3.small
       - t3.medium
 
-  PlatformVersion:
-    Type: String
-    Default: Node.js 20
-    Description: Elastic Beanstalk platform version
-    AllowedValues:
-      - Node.js 18
-      - Node.js 20
+  # Platform version is now hardcoded directly in the SolutionStackName
 
   ElasticBeanstalkApplicationName:
     Type: String
@@ -109,7 +103,7 @@ Resources:
     Properties:
       ApplicationName: !Ref ElasticBeanstalkApplication
       EnvironmentName: !Ref ElasticBeanstalkEnvironmentName
-      SolutionStackName: !Sub "64bit Amazon Linux 2 v5.8.0 running ${PlatformVersion}"
+      SolutionStackName: "64bit Amazon Linux 2023 v6.0.2 running Node.js 20"
       OptionSettings:
         - Namespace: aws:elasticbeanstalk:environment
           OptionName: ServiceRole

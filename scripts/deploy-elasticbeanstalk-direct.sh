@@ -10,7 +10,8 @@ TEMPLATE_FILE="../deploy/elasticbeanstalk-direct.yaml"
 REGION="us-east-1"
 APP_NAME="visitor-signin-app"
 ENV_NAME="visitor-signin-prod"
-PLATFORM_VERSION="Node.js 20"
+# Platform version is now hardcoded in the template
+# PLATFORM_VERSION="Node.js 20"
 INSTANCE_TYPE="t2.micro"
 ENVIRONMENT="production"
 
@@ -50,7 +51,6 @@ aws cloudformation deploy \
     ElasticBeanstalkApplicationName="$APP_NAME" \
     ElasticBeanstalkEnvironmentName="$ENV_NAME" \
     InstanceType="$INSTANCE_TYPE" \
-    PlatformVersion="$PLATFORM_VERSION" \
     DatabaseName="$DB_NAME" \
     DatabaseUsername="$DB_USERNAME" \
     DatabasePassword="$DB_PASSWORD" \
