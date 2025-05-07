@@ -175,61 +175,9 @@ Resources:
                   - 'elasticbeanstalk:CheckDNSAvailability'
                 Resource: '*'
   
-  CodePipelineServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: codepipeline.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
-      # Using inline policies instead of managed policies to avoid issues with non-existent policies
-      Policies:
-        - PolicyName: CodeBuildAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'codebuild:*'
-                Resource: '*'
-        - PolicyName: ElasticBeanstalkAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'elasticbeanstalk:*'
-                  - 'ec2:*'
-                  - 'ecs:*'
-                  - 'ecr:*'
-                  - 'cloudformation:*'
-                  - 'autoscaling:*'
-                  - 'cloudwatch:*'
-                  - 's3:*'
-                  - 'sns:*'
-                  - 'rds:*'
-                  - 'logs:*'
-                Resource: '*'
+  # We've removed the CodePipeline role since we're bypassing the pipeline
   
-  # Create IAM policy for CodePipeline to access GitHub
-  CodePipelineGitHubPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: !Sub ${AppName}-github-access-policy
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - 'codestar-connections:UseConnection'
-            Resource: '*'
-      Roles:
-        - !Ref CodePipelineServiceRole
+  # We don't need the CodeStar connections policy since we're using OAuth
   
   # CodeBuild Project
   CodeBuildProject:
@@ -239,7 +187,7 @@ Resources:
       Description: 'Build project for visitor sign-in application'
       ServiceRole: !Ref CodeBuildServiceRole
       Artifacts:
-        Type: CODEPIPELINE
+        Type: NO_ARTIFACTS
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
@@ -268,8 +216,12 @@ Resources:
           - Name: ARTIFACT_BUCKET
             Value: !Ref ArtifactBucketName
       Source:
-        Type: CODEPIPELINE
+        Type: GITHUB
+        Location: !Sub https://github.com/${GitHubOwner}/${GitHubRepo}.git
         BuildSpec: buildspec.yml
+        GitCloneDepth: 1
+        Auth:
+          Type: OAUTH
       TimeoutInMinutes: 15
   
   # Create Elastic Beanstalk application if it doesn't exist
@@ -319,71 +271,26 @@ Resources:
           OptionName: EMAIL_SERVICE_ENABLED
           Value: !Ref EmailServiceEnabled
 
-  # GitHub connection for CodePipeline
-  GitHubConnection:
-    Type: AWS::CodeStarConnections::Connection
-    Properties:
-      # AWS CodeStar Connections have a 32-character name limit
-      # Using a short fixed name to avoid length issues
-      ConnectionName: "visitor-app-github"
-      ProviderType: GitHub
+  # We'll use OAuth authentication for GitHub directly with CodeBuild
+  # No need for a CodeStar connection when using direct OAUTH integration
 
-  # CodePipeline
-  Pipeline:
-    Type: AWS::CodePipeline::Pipeline
-    Properties:
-      Name: !Sub ${AppName}-pipeline
-      RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/${CodePipelineServiceRole}"
-      ArtifactStore:
-        Type: S3
-        Location: !Ref ArtifactBucketName
-      Stages:
-        # Source Stage with GitHub
-        - Name: Source
-          Actions:
-            - Name: Source
-              ActionTypeId:
-                Category: Source
-                Owner: AWS
-                Provider: CodeStarSourceConnection
-                Version: '1'
-              Configuration:
-                ConnectionArn: !Ref GitHubConnectionArn
-                FullRepositoryId: !Sub ${GitHubOwner}/${GitHubRepo}
-                BranchName: !Ref GitHubBranch
-                OutputArtifactFormat: 'CODE_ZIP'
-              OutputArtifacts:
-                - Name: SourceCode
-        
-        # Build and Deploy Combined Stage (simplifying to reduce potential validation errors)
-        - Name: BuildAndDeploy
-          Actions:
-            - Name: BuildAndDeployAction
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: '1'
-              Configuration:
-                ProjectName: !Ref CodeBuildProject
-              InputArtifacts:
-                - Name: SourceCode
-              OutputArtifacts:
-                - Name: BuildOutput
+  # Simplified approach: We'll create a manual trigger for CodeBuild
+  # This will bypass the complex pipeline configuration that's causing validation errors
+  # Instead, we'll provide instructions for manually triggering builds after GitHub connection is set up
 
 Outputs:
-  PipelineURL:
-    Description: URL to the CodePipeline console
-    Value: !Sub https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${AppName}-pipeline
+  CodeBuildProjectURL:
+    Description: URL to the CodeBuild project console
+    Value: !Sub https://console.aws.amazon.com/codesuite/codebuild/projects/${AppName}-build/history?region=${AWS::Region}
   
   ApplicationURL:
     Description: URL to the Elastic Beanstalk environment
     Value: !Sub http://${ElasticBeanstalkEnvironment}.${AWS::Region}.elasticbeanstalk.com
     
-  CodeStarConnectionARN:
-    Description: ARN of the GitHub connection (needs to be manually activated in the console)
-    Value: !Sub "arn:aws:codestar-connections:${AWS::Region}:${AWS::AccountId}:connection/${GitHubConnection}"
+  GitHubSetupInstructions:
+    Description: Connecting CodeBuild to GitHub
+    Value: "In the AWS Console, navigate to CodeBuild > Projects > visitor-app-build > Edit > Source > Edit, then choose GitHub as the source provider, connect to your GitHub account, and specify the repo and branch."
     
-  ConnectionActivationInstructions:
-    Description: Instructions to activate the GitHub connection
-    Value: "To activate the GitHub connection, go to the AWS Console > Developer Tools > Settings > Connections > Click on the connection and follow the instructions to complete the GitHub authentication."
+  DeploymentInstructions:
+    Description: Manual deployment instructions
+    Value: "1. Connect CodeBuild to GitHub using the instructions above. 2. Start a build in the CodeBuild console. 3. This will deploy to Elastic Beanstalk automatically."
