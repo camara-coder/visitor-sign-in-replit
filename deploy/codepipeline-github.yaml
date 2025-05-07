@@ -283,7 +283,9 @@ Resources:
   GitHubConnection:
     Type: AWS::CodeStarConnections::Connection
     Properties:
-      ConnectionName: !Sub ${AppName}-gh-conn
+      # AWS CodeStar Connections have a 32-character name limit
+      # Using a short fixed name to avoid length issues
+      ConnectionName: "visitor-app-github"
       ProviderType: GitHub
 
   # CodePipeline

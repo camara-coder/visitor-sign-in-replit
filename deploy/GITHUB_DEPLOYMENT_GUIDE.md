@@ -124,11 +124,13 @@ After the CloudFormation stack is deployed, there's one manual step required:
 ### Activating the GitHub Connection
 
 1. Go to the AWS Console > Developer Tools > Settings > Connections.
-2. Find the connection named `[your-app-name]-github-connection`.
+2. Find the connection named `visitor-app-github`.
 3. Click "Update pending connection" and follow the GitHub authentication process.
 4. Once authorized, the connection status will change to "Available".
 
 This step is necessary because AWS requires explicit authorization to access your GitHub repositories.
+
+> **Important**: AWS CodeStar Connections have a 32-character name limit. To avoid deployment issues, we use a fixed connection name "visitor-app-github" instead of dynamically generating it based on your application name.
 
 ## Understanding the Deployment Architecture
 
