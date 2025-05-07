@@ -82,6 +82,14 @@ Parameters:
     Description: Name of the S3 bucket for build artifacts
     Type: String
     Default: visitor-app-artifacts
+    
+  CreateArtifactBucket:
+    Description: Whether to create a new S3 artifact bucket (set to false if bucket already exists)
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
 
   PlatformVersion:
     Description: Platform version for Elastic Beanstalk
@@ -98,12 +106,17 @@ Parameters:
       - t3.medium
       - t3.large
 
+Conditions:
+  ShouldCreateArtifactBucket: !Equals [!Ref CreateArtifactBucket, 'true']
+
 Resources:
   # S3 Bucket for build artifacts
   # Note: This bucket is expected to already exist, created by the deployment script
+  # The bucket will only be created if CreateArtifactBucket is set to 'true'
   # DeletionPolicy and UpdateReplacePolicy are set to Retain to avoid issues with bucket recreation
   ArtifactBucket:
     Type: AWS::S3::Bucket
+    Condition: ShouldCreateArtifactBucket
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
@@ -115,6 +128,10 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+        
+  # Handle the case for an existing S3 bucket without trying to create it in CloudFormation
+  # This is a much simpler approach than creating a custom resource
+  # We'll just reference the bucket name directly in the Pipeline since we know it exists
   
   # IAM Roles
   CodeBuildServiceRole:
@@ -277,7 +294,7 @@ Resources:
       RoleArn: !GetAtt CodePipelineServiceRole.Arn
       ArtifactStore:
         Type: S3
-        Location: !Ref ArtifactBucket
+        Location: !Ref ArtifactBucketName
       Stages:
         # Source Stage with GitHub
         - Name: Source
