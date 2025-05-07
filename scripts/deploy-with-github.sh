@@ -253,7 +253,7 @@ else
 fi
 
 # Step 3: Create or configure S3 bucket for artifacts
-echo -e "${CYAN}== Step 3: Creating or configuring S3 bucket for artifacts ==${NC}"
+echo -e "${CYAN}== Step 3: Creating or configuring S3 bucket for artifacts (outside CloudFormation) ==${NC}"
 if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" 2>/dev/null; then
     echo -e "${YELLOW}Creating S3 bucket: $ARTIFACT_BUCKET${NC}"
     
@@ -349,7 +349,7 @@ echo -e "- CodeBuild Project:             ${CYAN}${APP_NAME}-build${NC}"
 echo -e "- CodePipeline:                  ${CYAN}${APP_NAME}-pipeline${NC}"
 echo -e "- Elastic Beanstalk App:         ${CYAN}$EB_APP_NAME${NC}"
 echo -e "- Elastic Beanstalk Env:         ${CYAN}$EB_ENV_NAME${NC}"
-echo -e "- S3 Artifact Bucket:            ${CYAN}$ARTIFACT_BUCKET${NC}"
+echo -e "- S3 Artifact Bucket:            ${CYAN}$ARTIFACT_BUCKET${NC} (pre-created in Step 3)"
 echo -e "- Platform:                      ${CYAN}$PLATFORM_VERSION${NC}"
 echo -e "- Instance Type:                 ${CYAN}$INSTANCE_TYPE${NC}"
 echo -e "${YELLOW}NOTE: You will need to manually activate the GitHub connection in AWS Console.${NC}"

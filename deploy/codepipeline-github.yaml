@@ -100,6 +100,8 @@ Parameters:
 
 Resources:
   # S3 Bucket for build artifacts
+  # Note: This bucket is expected to already exist, created by the deployment script
+  # DeletionPolicy and UpdateReplacePolicy are set to Retain to avoid issues with bucket recreation
   ArtifactBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
