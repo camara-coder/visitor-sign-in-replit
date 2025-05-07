@@ -400,11 +400,12 @@ aws cloudformation deploy \
 
 echo ""
 echo "Step 4.2: Retrieving the newly created GitHub connection ARN"
-CONNECTION_ARN=$(aws cloudformation describe-stacks \
-    --stack-name $STACK_NAME \
-    --query "Stacks[0].Outputs[?OutputKey=='CodeStarConnectionARN'].OutputValue" \
-    --output text \
-    --region $REGION)
+# In environments with PowerUserAccess but no IAM:GetRole permission,
+# CloudFormation will return empty values for attributes requiring IAM:GetRole access.
+# As a workaround, we'll construct the ARN ourselves
+ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+CONNECTION_ARN="arn:aws:codestar-connections:$REGION:$ACCOUNT_ID:connection/visitor-app-github"
+echo "Using connection ARN: $CONNECTION_ARN"
 
 echo "GitHub Connection ARN: $CONNECTION_ARN"
 echo ""
@@ -484,11 +485,12 @@ if [ $? -eq 0 ]; then
     echo -e "${YELLOW}Retrieving deployment information...${NC}"
     
     # Get GitHub connection ARN
-    CONNECTION_ARN=$(aws cloudformation describe-stacks \
-        --stack-name $STACK_NAME \
-        --query "Stacks[0].Outputs[?OutputKey=='CodeStarConnectionARN'].OutputValue" \
-        --output text \
-        --region $REGION)
+    # We're already using the constructed ARN from above, but we can confirm it here
+    # In restricted IAM environments, the ARN may not be retrievable from CloudFormation outputs
+    if [ -z "$CONNECTION_ARN" ]; then
+        ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+        CONNECTION_ARN="arn:aws:codestar-connections:$REGION:$ACCOUNT_ID:connection/visitor-app-github"
+    fi
     
     # Get pipeline URL
     PIPELINE_URL=$(aws cloudformation describe-stacks \

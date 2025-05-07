@@ -230,7 +230,7 @@ Resources:
     Properties:
       Name: !Sub ${AppName}-build
       Description: 'Build project for visitor sign-in application'
-      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      ServiceRole: !Ref CodeBuildServiceRole
       Artifacts:
         Type: CODEPIPELINE
       Environment:
@@ -319,7 +319,7 @@ Resources:
     Type: AWS::CodePipeline::Pipeline
     Properties:
       Name: !Sub ${AppName}-pipeline
-      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/${CodePipelineServiceRole}"
       ArtifactStore:
         Type: S3
         Location: !Ref ArtifactBucketName
@@ -383,7 +383,7 @@ Outputs:
     
   CodeStarConnectionARN:
     Description: ARN of the GitHub connection (needs to be manually activated in the console)
-    Value: !GetAtt GitHubConnection.ConnectionArn
+    Value: !Sub "arn:aws:codestar-connections:${AWS::Region}:${AWS::AccountId}:connection/${GitHubConnection}"
     
   ConnectionActivationInstructions:
     Description: Instructions to activate the GitHub connection
